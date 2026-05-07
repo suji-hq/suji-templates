@@ -62,7 +62,7 @@ We review for:
 - The compose file is sane (no host-mounted secrets, no `privileged: true`, no `network_mode: host`).
 - The manifest's form makes sense — secrets are marked as secrets, required fields are required.
 
-Once merged, the marketplace picks up changes on its next sync (runs every 6 hours).
+Once merged, the marketplace updates within seconds (push webhook), or at most 6 hours later (fallback cron).
 
 ## License
 
