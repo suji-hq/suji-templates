@@ -1,0 +1,21 @@
+services:
+  nocodb:
+    image: docker.io/nocodb/nocodb:0.252.0
+    restart: unless-stopped
+    environment:
+      NC_AUTH_JWT_SECRET: ${NC_AUTH_JWT_SECRET}
+    ports:
+      - "8080"
+    volumes:
+      - nocodb-data:/usr/app/data
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: "1.0"
+volumes:
+  nocodb-data:
+networks:
+  suji-net:
+    external: true

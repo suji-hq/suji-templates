@@ -1,0 +1,22 @@
+services:
+  plausible:
+    image: docker.io/plausible/community-edition:v2.1.5
+    restart: unless-stopped
+    environment:
+      BASE_URL: ${BASE_URL}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+    ports:
+      - "8000"
+    volumes:
+      - plausible-data:/data
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+          cpus: "1.0"
+volumes:
+  plausible-data:
+networks:
+  suji-net:
+    external: true

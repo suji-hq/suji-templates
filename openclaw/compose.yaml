@@ -1,0 +1,30 @@
+services:
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:2026.2.3
+    restart: unless-stopped
+    environment:
+      # All env values are double-quoted so unselected-channel tokens render
+      # as the YAML string "" (instead of bare empty, which YAML parses as null).
+      AI_PROVIDER: "${AI_PROVIDER}"
+      AI_API_KEY: "${AI_API_KEY}"
+      OPENCLAW_GATEWAY_PASSWORD: "${OPENCLAW_GATEWAY_PASSWORD}"
+      CHANNELS: "${CHANNELS}"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
+      DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN}"
+      WHATSAPP_TOKEN: "${WHATSAPP_TOKEN}"
+      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
+    ports:
+      - "18789"
+    volumes:
+      - openclaw-data:/data
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: "1.0"
+volumes:
+  openclaw-data:
+networks:
+  suji-net:
+    external: true

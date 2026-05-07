@@ -1,0 +1,21 @@
+services:
+  wikijs:
+    image: docker.io/requarks/wiki:2.5.307
+    restart: unless-stopped
+    environment:
+      DB_TYPE: ${DB_TYPE}
+    ports:
+      - "3000"
+    volumes:
+      - wikijs-data:/wiki/data
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+          cpus: "1.0"
+volumes:
+  wikijs-data:
+networks:
+  suji-net:
+    external: true

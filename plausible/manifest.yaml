@@ -1,0 +1,42 @@
+slug: plausible
+
+name: Plausible Analytics
+description: Privacy-friendly, lightweight web analytics — GDPR-compliant Google Analytics alternative.
+homepage_url: https://plausible.io
+icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/plausible/icon.svg
+version: 2.1.5
+categories: [analytics]
+license: AGPL-3.0
+
+resources:
+  min_memory_mib: 1024
+  recommended_memory_mib: 2048
+  min_cpu_millicores: 500
+  recommended_storage_gib: 10
+
+exposure:
+  exposable: true
+  default: on
+  port: 8000
+  subdomain_hint: plausible
+
+network:
+  internal_hostname: plausible
+
+upgrade_policy: manual
+
+registry:
+  - docker.io
+
+form_schema:
+  - key: BASE_URL
+    type: text
+    label: Site URL
+    description: The full URL Plausible will be served at.
+    required: true
+
+  - key: SECRET_KEY_BASE
+    type: secret
+    label: Secret key base
+    description: Auto-generated; min 64 chars.
+    auto_generate: true

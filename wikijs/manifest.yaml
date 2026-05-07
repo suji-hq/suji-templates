@@ -1,0 +1,37 @@
+slug: wikijs
+
+name: Wiki.js
+description: Modern, lightweight, powerful wiki built on Node.js, Git, and Markdown.
+homepage_url: https://wiki.js.org
+icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/wikijs/icon.svg
+version: 2.5.307
+categories: [productivity, cms]
+license: AGPL-3.0
+
+resources:
+  min_memory_mib: 1024
+  recommended_memory_mib: 2048
+  min_cpu_millicores: 500
+  recommended_storage_gib: 10
+
+exposure:
+  exposable: true
+  default: on
+  port: 3000
+  subdomain_hint: wikijs
+
+network:
+  internal_hostname: wikijs
+
+upgrade_policy: manual
+
+registry:
+  - docker.io
+
+form_schema:
+  - key: DB_TYPE
+    type: select
+    label: Database type
+    default: sqlite
+    options:
+      - { value: sqlite, label: SQLite (local file) }

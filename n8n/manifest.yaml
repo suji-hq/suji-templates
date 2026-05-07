@@ -1,0 +1,55 @@
+slug: n8n
+
+name: n8n
+description: Workflow automation platform with hundreds of integrations (Zapier alternative).
+homepage_url: https://n8n.io
+icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/n8n/icon.svg
+version: 1.62.0
+release_notes: First community release.
+categories: [automation, productivity]
+license: Apache-2.0
+
+resources:
+  min_memory_mib: 512
+  recommended_memory_mib: 1024
+  min_cpu_millicores: 250
+  recommended_storage_gib: 10
+
+exposure:
+  exposable: true
+  default: on
+  port: 5678
+  subdomain_hint: n8n
+
+network:
+  internal_hostname: n8n
+
+upgrade_policy: manual
+
+registry:
+  - docker.io
+
+form_schema:
+  - key: N8N_BASIC_AUTH_USER
+    type: text
+    label: Admin username
+    description: The username for n8n's basic auth login.
+    required: true
+    default: admin
+
+  - key: N8N_BASIC_AUTH_PASSWORD
+    type: secret
+    label: Admin password
+    required: true
+
+  - key: GENERIC_TIMEZONE
+    type: select
+    label: Timezone
+    default: UTC
+    options:
+      - { value: UTC, label: UTC }
+      - { value: Europe/Paris, label: Europe/Paris }
+      - { value: Europe/London, label: Europe/London }
+      - { value: America/New_York, label: America/New_York }
+      - { value: America/Los_Angeles, label: America/Los_Angeles }
+      - { value: Asia/Tokyo, label: Asia/Tokyo }

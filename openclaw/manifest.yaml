@@ -1,0 +1,90 @@
+slug: openclaw
+
+name: OpenClaw
+description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
+homepage_url: https://github.com/openclaw/openclaw
+icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
+version: 2026.2.3
+release_notes: First marketplace release. Image pulled directly from upstream openclaw/openclaw.
+categories: [communication, automation]
+license: MIT
+
+resources:
+  min_memory_mib: 512
+  recommended_memory_mib: 1024
+  min_cpu_millicores: 250
+  recommended_storage_gib: 5
+
+exposure:
+  exposable: true
+  default: on
+  port: 18789
+  subdomain_hint: openclaw
+
+network:
+  internal_hostname: openclaw
+
+upgrade_policy: automatic
+
+registry:
+  - ghcr.io
+
+form_schema:
+  - key: AI_PROVIDER
+    type: select
+    label: AI provider
+    description: Which AI service OpenClaw uses for replies.
+    required: true
+    options:
+      - { value: anthropic, label: Anthropic (Claude) }
+      - { value: openai, label: OpenAI (GPT) }
+
+  - key: AI_API_KEY
+    type: secret
+    label: AI API key
+    description: Your API key for the chosen provider.
+    required: true
+
+  - key: OPENCLAW_GATEWAY_PASSWORD
+    type: secret
+    label: Gateway password
+    description: Auto-generated if blank — used to authenticate the bot's webhook callbacks.
+    auto_generate: true
+
+  - key: CHANNELS
+    type: multiselect
+    label: Channels
+    description: Messaging platforms OpenClaw connects to.
+    required: true
+    options:
+      - { value: telegram, label: Telegram }
+      - { value: discord, label: Discord }
+      - { value: whatsapp, label: WhatsApp Cloud API }
+      - { value: slack, label: Slack }
+
+  # Per-channel tokens — `default: ""` lets unselected channels render the
+  # compose with an empty string instead of leaving `${VAR}` unresolved at
+  # deploy time. OpenClaw treats empty channel tokens as "channel disabled".
+  - key: TELEGRAM_BOT_TOKEN
+    type: secret
+    label: Telegram bot token
+    description: From @BotFather. Required if Telegram is selected.
+    default: ""
+
+  - key: DISCORD_BOT_TOKEN
+    type: secret
+    label: Discord bot token
+    description: From the Discord developer portal. Required if Discord is selected.
+    default: ""
+
+  - key: WHATSAPP_TOKEN
+    type: secret
+    label: WhatsApp Cloud API token
+    description: From Meta Business. Required if WhatsApp is selected.
+    default: ""
+
+  - key: SLACK_BOT_TOKEN
+    type: secret
+    label: Slack bot token
+    description: From Slack app config. Required if Slack is selected.
+    default: ""

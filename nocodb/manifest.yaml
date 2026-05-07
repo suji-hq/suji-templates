@@ -1,0 +1,36 @@
+slug: nocodb
+
+name: NocoDB
+description: Open-source Airtable alternative — turns any database into a smart spreadsheet UI.
+homepage_url: https://nocodb.com
+icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/nocodb/icon.svg
+version: 0.252.0
+categories: [database, productivity]
+license: AGPL-3.0
+
+resources:
+  min_memory_mib: 512
+  recommended_memory_mib: 1024
+  min_cpu_millicores: 250
+  recommended_storage_gib: 5
+
+exposure:
+  exposable: true
+  default: on
+  port: 8080
+  subdomain_hint: nocodb
+
+network:
+  internal_hostname: nocodb
+
+upgrade_policy: manual
+
+registry:
+  - docker.io
+
+form_schema:
+  - key: NC_AUTH_JWT_SECRET
+    type: secret
+    label: JWT secret
+    description: Auto-generated if blank.
+    auto_generate: true
