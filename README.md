@@ -62,7 +62,7 @@ We review for:
 - The compose file is sane (no host-mounted secrets, no `privileged: true`, no `network_mode: host`).
 - The manifest's form makes sense — secrets are marked as secrets, required fields are required.
 
-Once merged, the app appears in the marketplace within a few minutes.
+Once merged, the marketplace picks up changes on its next sync (runs every 6 hours).
 
 ## License
 
