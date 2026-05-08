@@ -13,7 +13,7 @@ resources:
   min_memory_mib: 1024
   recommended_memory_mib: 2048
   min_cpu_millicores: 500
-  recommended_storage_gib: 6
+  recommended_storage_gib: 5
 
 exposure:
   exposable: true
