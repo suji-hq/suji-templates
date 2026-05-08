@@ -10,9 +10,9 @@ categories: [communication, automation]
 license: MIT
 
 resources:
-  min_memory_mib: 512
-  recommended_memory_mib: 1024
-  min_cpu_millicores: 250
+  min_memory_mib: 1024
+  recommended_memory_mib: 2048
+  min_cpu_millicores: 500
   recommended_storage_gib: 5
 
 exposure:
