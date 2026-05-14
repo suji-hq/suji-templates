@@ -16,7 +16,12 @@ services:
     ports:
       - "18789"
     volumes:
-      - openclaw-data:/data
+      # OpenClaw persists state (sqlite + session + config) at
+      # /home/node/.openclaw — see upstream Dockerfile, which pre-creates
+      # this dir with node:node 0700 so first-run named volumes inherit
+      # correct ownership. Mounting elsewhere (e.g. /data) silently loses
+      # state across container recreates.
+      - openclaw-data:/home/node/.openclaw
     networks: [suji-net]
     deploy:
       resources:
