@@ -26,6 +26,15 @@ services:
     environment:
       # All env values are double-quoted so unselected-channel tokens render
       # as the YAML string "" (instead of bare empty, which YAML parses as null).
+      #
+      # OPENCLAW_GATEWAY_BIND=lan: OpenClaw defaults to loopback-only, which
+      # makes it unreachable from outside the container. `lan` binds the
+      # container's bridge interface so docker's published port (and
+      # cloudflared via the host) can actually reach it. The container is
+      # still firewalled — only cloudflared on the host has network access
+      # to the published port, and inbound from the internet only arrives
+      # via the Cloudflare Tunnel.
+      OPENCLAW_GATEWAY_BIND: "lan"
       AI_PROVIDER: "${AI_PROVIDER}"
       AI_API_KEY: "${AI_API_KEY}"
       OPENCLAW_GATEWAY_PASSWORD: "${OPENCLAW_GATEWAY_PASSWORD}"
