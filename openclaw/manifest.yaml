@@ -24,10 +24,11 @@ exposure:
 network:
   internal_hostname: openclaw
 
-upgrade_policy: automatic
+upgrade_policy: breaking-changes-flagged
 
 registry:
   - ghcr.io
+  - docker.io
 
 form_schema:
   - key: AI_PROVIDER

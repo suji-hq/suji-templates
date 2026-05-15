@@ -1,7 +1,28 @@
 services:
+  # Idempotent ownership fixup. Runs to completion before openclaw starts.
+  # Docker only inherits image-side directory ownership on the *first*
+  # mount of an empty named volume — so any later mount-path change, or
+  # a volume that was once mounted as root, leaves the openclaw process
+  # (USER node, uid 1000) unable to write. chown'ing on every deploy is
+  # cheap and idempotent, and silently no-ops when ownership is correct.
+  init-perms:
+    image: docker.io/library/alpine:3.20.3
+    user: "0"
+    command: chown -R 1000:1000 /home/node/.openclaw
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.1"
+
   openclaw:
     image: ghcr.io/openclaw/openclaw:2026.2.3
     restart: unless-stopped
+    depends_on:
+      init-perms:
+        condition: service_completed_successfully
     environment:
       # All env values are double-quoted so unselected-channel tokens render
       # as the YAML string "" (instead of bare empty, which YAML parses as null).
