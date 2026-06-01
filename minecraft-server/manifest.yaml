@@ -1,0 +1,46 @@
+slug: minecraft-server
+name: Minecraft Server
+description: >-
+  Self-hosted Minecraft Java server managed by the Crafty Controller web
+  panel. Create and run servers, edit configs, schedule backups, and use the
+  in-browser console. The first server (port 25565) is reachable by players at
+  your VM's public IP; the admin panel is at your suji.fr subdomain. Your
+  initial Crafty admin password is shown in this app's logs on first start.
+homepage_url: https://craftycontrol.com
+version: 1.0.0
+release_notes: >-
+  First release. Bundles Crafty Controller 4.10.4. Only the server bound to
+  port 25565 is publicly reachable; additional Crafty-managed servers are
+  admin-only. Accept the Mojang EULA inside the Crafty panel when creating a
+  server.
+categories: [gaming]
+license: GPL-3.0-only
+resources:
+  min_memory_mib: 4096
+  recommended_memory_mib: 6144
+  min_cpu_millicores: 1000
+  recommended_storage_gib: 40
+exposure:
+  exposable: true
+  default: on
+  port: 8443
+  subdomain_hint: minecraft
+  scheme: https
+tcp_ports: [25565]
+network:
+  internal_hostname: minecraft
+upgrade_policy: manual
+registry:
+  - docker.io
+form_schema:
+  - key: TZ
+    type: select
+    label: Server timezone
+    description: Timezone for server logs and scheduled backups.
+    default: Etc/UTC
+    options:
+      - { value: Etc/UTC, label: UTC }
+      - { value: Europe/Paris, label: Europe/Paris }
+      - { value: America/New_York, label: America/New_York }
+      - { value: America/Los_Angeles, label: America/Los_Angeles }
+      - { value: Asia/Tokyo, label: Asia/Tokyo }

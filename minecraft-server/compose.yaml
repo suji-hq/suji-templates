@@ -1,0 +1,28 @@
+services:
+  crafty:
+    image: docker.io/arcadiatechnology/crafty-4:4.10.4
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+    ports:
+      - "8443"
+      - "25565"
+    volumes:
+      - crafty-servers:/crafty/servers
+      - crafty-backups:/crafty/backups
+      - crafty-config:/crafty/app/config
+      - crafty-logs:/crafty/logs
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 4096M
+          cpus: "2.0"
+volumes:
+  crafty-servers:
+  crafty-backups:
+  crafty-config:
+  crafty-logs:
+networks:
+  suji-net:
+    external: true
