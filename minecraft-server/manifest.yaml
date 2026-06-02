@@ -7,6 +7,7 @@ description: >-
   your VM's public IP; the admin panel is at your suji.fr subdomain. Your
   initial Crafty admin password is shown in this app's logs on first start.
 homepage_url: https://craftycontrol.com
+icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/minecraft-server/icon.svg
 version: 1.0.0
 release_notes: >-
   First release. Bundles Crafty Controller 4.10.4. Only the server bound to
