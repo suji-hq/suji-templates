@@ -3,7 +3,7 @@ services:
     image: docker.io/arcadiatechnology/crafty-4:4.10.4
     restart: unless-stopped
     environment:
-      TZ: ${TZ}
+      TZ: Etc/UTC
     ports:
       - "8443"
       - "25565"

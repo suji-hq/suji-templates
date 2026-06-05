@@ -33,15 +33,7 @@ network:
 upgrade_policy: manual
 registry:
   - docker.io
-form_schema:
-  - key: TZ
-    type: select
-    label: Server timezone
-    description: Timezone for server logs and scheduled backups.
-    default: Etc/UTC
-    options:
-      - { value: Etc/UTC, label: UTC }
-      - { value: Europe/Paris, label: Europe/Paris }
-      - { value: America/New_York, label: America/New_York }
-      - { value: America/Los_Angeles, label: America/Los_Angeles }
-      - { value: Asia/Tokyo, label: Asia/Tokyo }
+# No platform-level config form: all Minecraft/server settings live in the
+# Crafty Controller admin panel (the app's subdomain). TZ is pinned in the
+# compose. Keeping form_schema empty avoids a near-useless one-field form.
+form_schema: []
