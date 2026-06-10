@@ -322,9 +322,15 @@ def image_contract(image: str) -> dict:
 def diff_contract(old: dict, new: dict, report: Report):
     """Compare two image contracts; high-risk drift → error, else warn/info."""
     def entry_file(c):
-        # the dist entry the compose's init steps may invoke (cmd[1] usually)
+        # The script/subcommand a compose `command:` override or init step would
+        # reference. Skip the interpreter (cmd[0]) and any leading flags so a
+        # benign added flag (e.g. node --no-deprecation) isn't mistaken for an
+        # entry change; the entry is the first non-flag argument.
         cmd = c.get("cmd") or []
-        return cmd[1] if len(cmd) > 1 else None
+        for tok in cmd[1:]:
+            if isinstance(tok, str) and not tok.startswith("-"):
+                return tok
+        return None
 
     if old["user"] != new["user"]:
         report.add("error", "image.user",
