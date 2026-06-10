@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/brand/suji-lockup-dark.svg">
+    <img src=".github/brand/suji-lockup-light.svg" alt="Suji" width="156">
+  </picture>
+</p>
+
 # Suji Templates
 
 The catalog of apps you can install on [Suji](https://suji.fr) in one click.

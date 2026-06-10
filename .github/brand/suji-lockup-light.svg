@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 104 32" fill="none">
+  <!-- Suji mark: counting-rods S (mono, for light surfaces) -->
+  <g transform="translate(-4 -3.2) scale(0.6)" fill="#18181b">
+    <rect x="26" y="12" width="28" height="11" rx="5.5"/>
+    <rect x="10" y="26.5" width="44" height="11" rx="5.5"/>
+    <rect x="10" y="41" width="28" height="11" rx="5.5"/>
+  </g>
+  <text x="36" y="22.5" font-family="-apple-system, 'Inter', system-ui, sans-serif" font-size="19" font-weight="600" letter-spacing="-0.03em" fill="#18181b">Suji</text>
+</svg>
