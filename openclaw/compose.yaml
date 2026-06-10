@@ -17,20 +17,33 @@ services:
           memory: 64M
           cpus: "0.1"
 
-  # Writes gateway.mode=local + gateway.bind=lan into the persisted
-  # openclaw.json — mirrors upstream's scripts/docker/setup.sh. The runtime
-  # does NOT read OPENCLAW_GATEWAY_BIND from the environment (that var is
-  # only an input to upstream's setup script); without this config the
-  # gateway binds loopback inside the container and the published port
-  # 502s. Idempotent: re-runs just set the same two values.
+  # Writes gateway config into the persisted openclaw.json — mirrors
+  # upstream's scripts/docker/setup.sh. Idempotent: re-runs set the same
+  # values. Three settings, all required for the tunnel to work:
+  #
+  #   gateway.mode=local / gateway.bind=lan
+  #     The runtime does NOT read OPENCLAW_GATEWAY_BIND from the environment
+  #     (that var only feeds upstream's setup script). Without bind=lan the
+  #     gateway binds loopback inside the container and the published port 502s.
+  #
+  #   gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback=true
+  #     Since upstream v2026.2.26 the Control UI websocket rejects any browser
+  #     whose Origin is not in gateway.controlUi.allowedOrigins (which auto-
+  #     seeds to localhost only). Customers reach OpenClaw at a per-install
+  #     https://<subdomain>.suji.fr that we cannot know at template time, so an
+  #     explicit allowlist is impossible. Host-header fallback accepts the
+  #     connection when the browser Origin matches the request Host — which the
+  #     Cloudflare tunnel sets to that same subdomain. This still rejects cross-
+  #     origin (CSRF) attempts (Origin host != Host), unlike allowedOrigins:["*"]
+  #     which would disable the check entirely. See upstream issue #29385.
   init-config:
-    image: ghcr.io/openclaw/openclaw:2026.2.3
+    image: ghcr.io/openclaw/openclaw:2026.3.1
     user: "1000"
     depends_on:
       init-perms:
         condition: service_completed_successfully
     entrypoint: ["/bin/sh", "-c"]
-    command: ["node dist/index.js config set gateway.mode local && node dist/index.js config set gateway.bind lan"]
+    command: ["node dist/index.js config set gateway.mode local && node dist/index.js config set gateway.bind lan && node dist/index.js config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true"]
     environment:
       HOME: "/home/node"
     volumes:
@@ -42,7 +55,7 @@ services:
           cpus: "0.5"
 
   openclaw:
-    image: ghcr.io/openclaw/openclaw:2026.2.3
+    image: ghcr.io/openclaw/openclaw:2026.3.1
     restart: unless-stopped
     depends_on:
       init-config:

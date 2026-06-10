@@ -4,8 +4,14 @@ name: OpenClaw
 description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.2.3-1
-release_notes: First marketplace release. Image pulled directly from upstream openclaw/openclaw.
+version: 2026.3.1
+release_notes: >-
+  Update to upstream OpenClaw 2026.3.1. The install form, data directory
+  (/home/node/.openclaw) and gateway port are unchanged. Upstream v2026.2.26
+  added a Control-UI browser-origin check that rejected our tunnel domain; the
+  init-config step now enables Host-header origin fallback so the gateway
+  accepts the per-install https://<subdomain>.suji.fr while still blocking
+  cross-origin (CSRF) requests.
 categories: [communication, automation]
 license: MIT
 
