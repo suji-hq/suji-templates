@@ -2,7 +2,9 @@
 
 Multi-channel messaging bot with AI-powered responses. OpenClaw connects to
 Telegram, Discord, WhatsApp Cloud API, and Slack, and replies to incoming
-messages using your choice of AI provider (Anthropic Claude or OpenAI GPT).
+messages using your choice of AI provider — Anthropic, OpenAI, Google
+(Gemini), Mistral, Groq, OpenRouter, xAI, Moonshot AI, or any
+OpenAI-compatible endpoint (vLLM, Ollama, LM Studio, LiteLLM, …).
 
 This page covers everything you need to run OpenClaw on Suji: what to prepare,
 how to install, how to actually connect to the Control UI for the first time,
@@ -20,6 +22,16 @@ You'll need:
 - **An AI provider API key**, from one of:
   - Anthropic — [console.anthropic.com](https://console.anthropic.com)
   - OpenAI — [platform.openai.com](https://platform.openai.com)
+  - Google (Gemini) — [aistudio.google.com](https://aistudio.google.com)
+  - Mistral — [console.mistral.ai](https://console.mistral.ai)
+  - Groq — [console.groq.com](https://console.groq.com)
+  - OpenRouter — [openrouter.ai](https://openrouter.ai/keys)
+  - xAI — [console.x.ai](https://console.x.ai)
+  - Moonshot AI — [platform.moonshot.ai](https://platform.moonshot.ai)
+
+  …or an **OpenAI-compatible endpoint URL** (vLLM, Ollama, LM Studio,
+  LiteLLM, a gateway you run yourself, …). For those, the API key is
+  optional — only set it if your endpoint requires authentication.
 - **At least one channel token** for the messaging platforms you want OpenClaw
   to respond on. You can wire up channels incrementally — start with one and
   add the rest later by editing the install.
@@ -42,11 +54,15 @@ In the Suji dashboard:
 
    | Field | Required | Notes |
    |---|---|---|
-   | AI provider | yes | Anthropic (Claude) or OpenAI (GPT). |
-   | AI API key | yes | Your key for the chosen provider. Stored encrypted at rest. |
+   | AI provider | yes | One of the providers above, or OpenAI-compatible for a custom endpoint. |
+   | Custom endpoint base URL | only for OpenAI-compatible | e.g. `https://llm.example.com/v1`. Leave blank otherwise. |
+   | AI API key | for cloud providers | Your key for the chosen provider. Stored encrypted at rest. Optional for OpenAI-compatible endpoints without auth. |
    | Gateway password | no | Auto-generated if you leave it blank. |
    | Channels | yes | Pick one or more of Telegram / Discord / WhatsApp / Slack. |
    | Per-channel tokens | only for the channels you select | See the table above. |
+
+   The provider key is pre-seeded into the gateway's environment; pick the
+   exact **model** in the Control UI after your first connect (section 3).
 
 3. **Recommended VM size: Small (2 vCPU / 2 GB RAM / 5 GB).** Mini (1 GB) is
    borderline at idle and will OOM under any real load.

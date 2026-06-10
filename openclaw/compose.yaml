@@ -60,6 +60,38 @@ services:
     depends_on:
       init-config:
         condition: service_completed_successfully
+    # The gateway has no notion of the form's generic AI_PROVIDER/AI_API_KEY
+    # pair — it discovers credentials from per-provider env vars
+    # (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, …) and honors
+    # OPENAI_BASE_URL for OpenAI-compatible endpoints. This wrapper maps the
+    # form contract onto those env names, then execs the stock gateway
+    # command (docker-entrypoint.sh just wraps `node`).
+    #
+    # `$$VAR` (double dollar, no braces) is deliberate, twice over: Suji's
+    # substitution only touches braced uppercase tokens, so these survive the
+    # platform render; docker compose's own interpolation collapses `$$` to `$`,
+    # so the shell reads the values from the container environment at
+    # runtime. User values are never spliced into the script text — no
+    # quoting/injection surface.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -n "$$AI_API_KEY" ]; then
+          case "$$AI_PROVIDER" in
+            anthropic) export ANTHROPIC_API_KEY="$$AI_API_KEY";;
+            openai|openai-compatible) export OPENAI_API_KEY="$$AI_API_KEY";;
+            google) export GEMINI_API_KEY="$$AI_API_KEY";;
+            mistral) export MISTRAL_API_KEY="$$AI_API_KEY";;
+            groq) export GROQ_API_KEY="$$AI_API_KEY";;
+            openrouter) export OPENROUTER_API_KEY="$$AI_API_KEY";;
+            xai) export XAI_API_KEY="$$AI_API_KEY";;
+            moonshot) export MOONSHOT_API_KEY="$$AI_API_KEY";;
+          esac
+        fi
+        if [ "$$AI_PROVIDER" = "openai-compatible" ] && [ -n "$$AI_BASE_URL" ]; then
+          export OPENAI_BASE_URL="$$AI_BASE_URL"
+        fi
+        exec node openclaw.mjs gateway --allow-unconfigured
     environment:
       # All env values are double-quoted so unselected-channel tokens render
       # as the YAML string "" (instead of bare empty, which YAML parses as null).
@@ -71,6 +103,7 @@ services:
       OPENCLAW_GATEWAY_TOKEN: "${OPENCLAW_GATEWAY_PASSWORD}"
       AI_PROVIDER: "${AI_PROVIDER}"
       AI_API_KEY: "${AI_API_KEY}"
+      AI_BASE_URL: "${AI_BASE_URL}"
       CHANNELS: "${CHANNELS}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
       DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN}"

@@ -4,14 +4,16 @@ name: OpenClaw
 description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.3.1
+version: 2026.3.1-1
 release_notes: >-
-  Update to upstream OpenClaw 2026.3.1. The install form, data directory
-  (/home/node/.openclaw) and gateway port are unchanged. Upstream v2026.2.26
-  added a Control-UI browser-origin check that rejected our tunnel domain; the
-  init-config step now enables Host-header origin fallback so the gateway
-  accepts the per-install https://<subdomain>.suji.fr while still blocking
-  cross-origin (CSRF) requests.
+  Same upstream OpenClaw 2026.3.1 image. Fixes the AI provider wiring: the
+  install form's provider + API key now reach the app (previously the generic
+  AI_PROVIDER/AI_API_KEY env vars were set but the gateway never read them, so
+  installs booted unconfigured). Adds the full set of providers the app
+  supports — Anthropic, OpenAI, Google (Gemini), Mistral, Groq, OpenRouter,
+  xAI, Moonshot AI — plus an OpenAI-compatible option with a custom base URL
+  (vLLM, Ollama, LM Studio, LiteLLM, …) where the API key is optional. Pick
+  the exact model in the Control UI after first connect.
 categories: [communication, automation]
 license: MIT
 
@@ -40,17 +42,30 @@ form_schema:
   - key: AI_PROVIDER
     type: select
     label: AI provider
-    description: Which AI service OpenClaw uses for replies.
+    description: Which AI service OpenClaw uses for replies. Pick OpenAI-compatible to use any custom endpoint (vLLM, Ollama, LM Studio, LiteLLM, …).
     required: true
     options:
       - { value: anthropic, label: Anthropic (Claude) }
       - { value: openai, label: OpenAI (GPT) }
+      - { value: google, label: Google (Gemini) }
+      - { value: mistral, label: Mistral }
+      - { value: groq, label: Groq }
+      - { value: openrouter, label: OpenRouter }
+      - { value: xai, label: xAI (Grok) }
+      - { value: moonshot, label: Moonshot AI (Kimi) }
+      - { value: openai-compatible, label: OpenAI-compatible (custom endpoint) }
+
+  - key: AI_BASE_URL
+    type: text
+    label: Custom endpoint base URL
+    description: Only for OpenAI-compatible — the endpoint's base URL, e.g. https://llm.example.com/v1. Leave blank for the providers above.
+    default: ""
 
   - key: AI_API_KEY
     type: secret
     label: AI API key
-    description: Your API key for the chosen provider.
-    required: true
+    description: Your API key for the chosen provider. Optional for OpenAI-compatible endpoints that don't require authentication.
+    default: ""
 
   - key: OPENCLAW_GATEWAY_PASSWORD
     type: secret
