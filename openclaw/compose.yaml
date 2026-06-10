@@ -17,27 +17,47 @@ services:
           memory: 64M
           cpus: "0.1"
 
+  # Writes gateway.mode=local + gateway.bind=lan into the persisted
+  # openclaw.json — mirrors upstream's scripts/docker/setup.sh. The runtime
+  # does NOT read OPENCLAW_GATEWAY_BIND from the environment (that var is
+  # only an input to upstream's setup script); without this config the
+  # gateway binds loopback inside the container and the published port
+  # 502s. Idempotent: re-runs just set the same two values.
+  init-config:
+    image: ghcr.io/openclaw/openclaw:2026.2.3
+    user: "1000"
+    depends_on:
+      init-perms:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["node dist/index.js config set gateway.mode local && node dist/index.js config set gateway.bind lan"]
+    environment:
+      HOME: "/home/node"
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+
   openclaw:
     image: ghcr.io/openclaw/openclaw:2026.2.3
     restart: unless-stopped
     depends_on:
-      init-perms:
+      init-config:
         condition: service_completed_successfully
     environment:
       # All env values are double-quoted so unselected-channel tokens render
       # as the YAML string "" (instead of bare empty, which YAML parses as null).
       #
-      # OPENCLAW_GATEWAY_BIND=lan: OpenClaw defaults to loopback-only, which
-      # makes it unreachable from outside the container. `lan` binds the
-      # container's bridge interface so docker's published port (and
-      # cloudflared via the host) can actually reach it. The container is
-      # still firewalled — only cloudflared on the host has network access
-      # to the published port, and inbound from the internet only arrives
-      # via the Cloudflare Tunnel.
-      OPENCLAW_GATEWAY_BIND: "lan"
+      # Token auth is REQUIRED once the gateway binds beyond loopback
+      # (init-config sets gateway.bind=lan). The form's auto-generated
+      # OPENCLAW_GATEWAY_PASSWORD secret feeds the token env the app
+      # actually reads; users unlock the gateway UI with it.
+      OPENCLAW_GATEWAY_TOKEN: "${OPENCLAW_GATEWAY_PASSWORD}"
       AI_PROVIDER: "${AI_PROVIDER}"
       AI_API_KEY: "${AI_API_KEY}"
-      OPENCLAW_GATEWAY_PASSWORD: "${OPENCLAW_GATEWAY_PASSWORD}"
       CHANNELS: "${CHANNELS}"
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
       DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN}"
