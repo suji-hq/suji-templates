@@ -18,7 +18,7 @@ services:
           cpus: "0.1"
 
   openclaw:
-    image: ghcr.io/openclaw/openclaw:2026.2.3
+    image: ghcr.io/openclaw/openclaw:2026.6.5
     restart: unless-stopped
     depends_on:
       init-perms:
