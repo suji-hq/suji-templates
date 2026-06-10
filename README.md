@@ -99,8 +99,11 @@ CI lives in `.github/workflows/` and is driven by `scripts/marketplace_ci.py`
   The poll is a best-effort detector and doesn't track per-app tag variants
   (e.g. `-alpine`); always sanity-check the candidate tag in the PR/issue.
 
-  Requires, in repo settings → Actions: workflow permissions set to
-  read/write, and "Allow GitHub Actions to create and approve pull requests".
+  The pipeline works as-is: it pushes the auto-bump branch and, if the org
+  disallows Actions-created PRs, posts an issue with a one-click compare link.
+  For *fully* automatic PRs (no human click), an org owner enables
+  Settings → Actions → General → "Allow GitHub Actions to create and approve
+  pull requests" (org-level here), or add a PAT secret for the PR step.
 
 ## License
 

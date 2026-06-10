@@ -136,9 +136,28 @@ jobs:
             echo "> bump only changes the image tag + version."
           } > /tmp/pr-body.md
           gh label create safe-auto-bump --color 0e8a16 --force 2>/dev/null || true
-          gh pr create --title "${APP} ${CANDIDATE}: auto-bump (SAFE)" \
-            --body-file /tmp/pr-body.md --label safe-auto-bump --head "$branch" \
-            || echo "PR may already exist for $branch"
+          REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          # The branch is already pushed. Try to open the PR with GITHUB_TOKEN;
+          # if the org disallows Actions-created PRs (or the PR exists), fall back
+          # to an issue carrying a one-click compare link so a human finishes it.
+          if gh pr create --title "${APP} ${CANDIDATE}: auto-bump (SAFE)" \
+               --body-file /tmp/pr-body.md --label safe-auto-bump --head "$branch"; then
+            echo "opened PR for $branch"
+          else
+            echo "auto-PR unavailable (org policy or PR exists); using issue fallback"
+            { echo "Auto-bump branch \`${branch}\` is pushed; analysis is **SAFE**, but"
+              echo "this workflow could not open the PR itself."; echo
+              echo "👉 **[Open the PR](${REPO_URL}/compare/main...${branch}?expand=1)**"; echo
+              cat /tmp/pr-body.md; } > /tmp/fallback.md
+            title="[auto-bump] ${APP} → ${CANDIDATE}"
+            if gh issue list --state open --search "$title in:title" --json title \
+                 --jq '.[].title' | grep -qxF "$title"; then
+              echo "fallback issue already open"
+            else
+              gh issue create --title "$title" --body-file /tmp/fallback.md \
+                --label safe-auto-bump
+            fi
+          fi
 
       - name: Open issue (NEEDS_REVIEW / BREAKING)
         if: steps.a.outputs.verdict != 'SAFE'
