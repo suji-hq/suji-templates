@@ -64,6 +64,44 @@ We review for:
 
 Once merged, the marketplace updates within seconds (push webhook), or at most 6 hours later (fallback cron).
 
+## Automated checks
+
+CI lives in `.github/workflows/` and is driven by `scripts/marketplace_ci.py`
+(pure Python + the `docker` CLI — no dependency on the Suji platform repo).
+
+- **Validate templates** runs on every PR that touches a `manifest.yaml` /
+  `compose.yaml`. It lints the contract (slug, version↔tag match, `${VAR}`
+  coverage, `exposure.port` published, form-field shape), diffs the **form &
+  exposure contract** against the base branch (a renamed/removed form key or a
+  moved `exposure.port` breaks existing installs → fails the check), diffs the
+  **image contract** (user / workdir / entrypoint / exposed ports) against the
+  pinned image, and **boots the app** to confirm the exposed port serves. The
+  verdict (`SAFE` / `NEEDS_REVIEW` / `BREAKING`) is posted as a PR comment;
+  `BREAKING` fails the check.
+
+- **Upstream release analysis** answers "can we move to the new version without
+  impact?" Trigger it three ways:
+  - **Webhook** — `POST` a `repository_dispatch`:
+    `{"event_type":"upstream-release","client_payload":{"app":"openclaw","version":"2026.3.1"}}`
+    (omit `version` to take the newest stable registry tag).
+  - **Manually** — Actions → *Upstream release analysis* → Run workflow (app + optional version).
+  - **Nightly** — a cron polls every app for a newer stable tag.
+
+  It bumps a copy of the template to the candidate tag, runs the same analysis,
+  then: **SAFE** → opens an auto-bump PR (which re-runs the validate gate);
+  **NEEDS_REVIEW / BREAKING** → opens an issue with the report. It never bumps a
+  live template on its own.
+
+  Note: `curl 200` in the boot test proves the app serves, but not that a
+  browser-origin/CORS check will accept the per-install `https://<sub>.suji.fr`
+  — for apps with a web UI that's flagged as `NEEDS_REVIEW` for a human to
+  confirm (see the OpenClaw `init-config` for the Host-header-fallback pattern).
+  The poll is a best-effort detector and doesn't track per-app tag variants
+  (e.g. `-alpine`); always sanity-check the candidate tag in the PR/issue.
+
+  Requires, in repo settings → Actions: workflow permissions set to
+  read/write, and "Allow GitHub Actions to create and approve pull requests".
+
 ## License
 
 Manifests in this repo are MIT. Each app keeps its own license — we just describe how to install it.

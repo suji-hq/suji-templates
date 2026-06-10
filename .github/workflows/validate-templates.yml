@@ -1,0 +1,96 @@
+name: Validate templates
+
+# PR gate: whenever a manifest.yaml / compose.yaml is touched, run the same
+# breaking-change analysis the platform's strict validator would imply — lint
+# the contract, diff the form/exposure contract against the base branch (so a
+# renamed form key or moved exposure port is caught), diff the image contract,
+# and boot the app. A BREAKING verdict fails the check.
+
+on:
+  pull_request:
+    paths:
+      - "*/manifest.yaml"
+      - "*/compose.yaml"
+      - "scripts/marketplace_ci.py"
+  push:
+    branches: [main]
+    paths:
+      - "*/manifest.yaml"
+      - "*/compose.yaml"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need the base ref to diff the contract
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+
+      # All event-sourced values flow through env (never interpolated into the
+      # shell script text) so a hostile folder name / ref can't inject commands.
+      - name: Determine changed apps
+        id: changed
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          BASE="${PR_BASE_SHA:-$PUSH_BEFORE}"
+          if [ -z "$BASE" ] || ! git cat-file -e "$BASE" 2>/dev/null; then
+            BASE="origin/main"
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          # Restrict to well-formed slug folders; ignores anything exotic.
+          apps=$(git diff --name-only "$BASE"...HEAD \
+            | grep -E '^[a-z0-9-]+/(manifest|compose)\.yaml$' \
+            | cut -d/ -f1 | sort -u)
+          echo "apps<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$apps" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "Changed apps:"; echo "$apps"
+
+      - name: Analyze each changed app
+        id: analyze
+        env:
+          APPS: ${{ steps.changed.outputs.apps }}
+          BASE: ${{ steps.changed.outputs.base }}
+        run: |
+          set -e
+          rc=0
+          : > /tmp/pr-report.md
+          # $APPS is a plain env value — `for` word-splits it but does NOT
+          # re-evaluate command substitution, so this is injection-safe.
+          for app in $APPS; do
+            case "$app" in
+              *[!a-z0-9-]*) echo "skip malformed app name: $app"; continue ;;
+            esac
+            echo "::group::analyze $app"
+            CI_REPORT_PATH="/tmp/report-$app.md" \
+              python3 scripts/marketplace_ci.py analyze "$app" \
+                --from-worktree --base "$BASE" --fail-on-breaking || rc=1
+            cat "/tmp/report-$app.md" >> /tmp/pr-report.md 2>/dev/null || true
+            echo "" >> /tmp/pr-report.md
+            echo "::endgroup::"
+          done
+          exit $rc
+
+      - name: Comment report on PR
+        if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ -s /tmp/pr-report.md ]; then
+            { echo "🤖 **Marketplace template analysis**"; echo; cat /tmp/pr-report.md; } \
+              > /tmp/comment.md
+            gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md --edit-last 2>/dev/null \
+              || gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+          fi

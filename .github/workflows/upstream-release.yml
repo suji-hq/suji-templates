@@ -1,0 +1,164 @@
+name: Upstream release analysis
+
+# Triggered when an app cuts a new upstream release. Decides whether we can move
+# the template to the new version WITHOUT impact:
+#   - lints the manifest/compose contract,
+#   - diffs the new image's contract (user/workdir/entry/ports) vs the pinned one,
+#   - boots the proposed template and curls the exposed port.
+# SAFE  -> opens an auto-bump PR (which re-runs through Validate templates).
+# else  -> opens an issue with the breaking-change report; no auto-bump.
+#
+# Webhook: POST a repository_dispatch with
+#   {"event_type":"upstream-release","client_payload":{"app":"openclaw","version":"2026.3.1"}}
+# (version optional — omit to take the newest stable tag from the registry).
+
+on:
+  repository_dispatch:
+    types: [upstream-release]
+  workflow_dispatch:
+    inputs:
+      app:
+        description: App slug (folder name)
+        required: true
+      version:
+        description: Candidate version/tag (blank = newest stable upstream)
+        required: false
+  schedule:
+    - cron: "17 6 * * *" # nightly: poll every app for a newer upstream tag
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.r.outputs.matrix }}
+      any: ${{ steps.r.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+
+      - name: Resolve apps + candidate versions
+        id: r
+        # client_payload.* and workflow inputs are attacker/operator-settable:
+        # validate strictly (slug charset + folder must exist; semver shape)
+        # and pass only through env — never interpolate into the script text.
+        env:
+          EVENT: ${{ github.event_name }}
+          PAYLOAD_APP: ${{ github.event.client_payload.app }}
+          PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_APP: ${{ github.event.inputs.app }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "schedule" ]; then
+            python3 scripts/marketplace_ci.py poll   # writes matrix + any
+            exit 0
+          fi
+          if [ "$EVENT" = "repository_dispatch" ]; then
+            app="$PAYLOAD_APP"; version="$PAYLOAD_VERSION"
+          else
+            app="$INPUT_APP"; version="$INPUT_VERSION"
+          fi
+          # --- validate ---
+          if ! printf '%s' "$app" | grep -qE '^[a-z0-9][a-z0-9-]{0,31}$'; then
+            echo "::error::invalid app slug"; exit 1
+          fi
+          if [ ! -f "$app/manifest.yaml" ]; then
+            echo "::error::unknown app '$app' (no such folder)"; exit 1
+          fi
+          if [ -n "$version" ] && \
+             ! printf '%s' "$version" | grep -qE '^v?[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]+)?$'; then
+            echo "::error::invalid version"; exit 1
+          fi
+          matrix=$(A="$app" V="$version" python3 -c \
+            'import json,os; print(json.dumps({"include":[{"app":os.environ["A"],"version":os.environ["V"]}]}))')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "any=true" >> "$GITHUB_OUTPUT"
+          echo "Resolved: $matrix"
+
+  analyze:
+    needs: resolve
+    if: needs.resolve.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+
+      - name: Analyze candidate
+        id: a
+        env:
+          APP: ${{ matrix.app }}
+          VERSION: ${{ matrix.version }}
+        run: |
+          set -euo pipefail
+          args=(analyze "$APP" --base HEAD)
+          if [ -n "${VERSION:-}" ]; then args+=(--version "$VERSION"); fi
+          CI_REPORT_PATH=/tmp/report.md python3 scripts/marketplace_ci.py "${args[@]}"
+
+      - name: Open auto-bump PR (SAFE)
+        if: steps.a.outputs.verdict == 'SAFE'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP: ${{ steps.a.outputs.app }}
+          CANDIDATE: ${{ steps.a.outputs.candidate }}
+          CURRENT: ${{ steps.a.outputs.current }}
+        run: |
+          set -euo pipefail
+          git config user.name "suji-templates-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          branch="auto-bump/${APP}-${CANDIDATE}"
+          git checkout -b "$branch"
+          python3 scripts/marketplace_ci.py bump "$APP" --version "$CANDIDATE"
+          git add "$APP/manifest.yaml" "$APP/compose.yaml"
+          git commit -m "${APP} ${CANDIDATE}: auto-bump from ${CURRENT} (SAFE)"
+          git push -u origin "$branch" --force-with-lease
+          {
+            echo "Automated version bump — analysis verdict: **SAFE**."
+            echo
+            cat /tmp/report.md
+            echo
+            echo "> ⚠️ Review \`release_notes\` in the manifest before merging — the"
+            echo "> bump only changes the image tag + version."
+          } > /tmp/pr-body.md
+          gh label create safe-auto-bump --color 0e8a16 --force 2>/dev/null || true
+          gh pr create --title "${APP} ${CANDIDATE}: auto-bump (SAFE)" \
+            --body-file /tmp/pr-body.md --label safe-auto-bump --head "$branch" \
+            || echo "PR may already exist for $branch"
+
+      - name: Open issue (NEEDS_REVIEW / BREAKING)
+        if: steps.a.outputs.verdict != 'SAFE'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP: ${{ steps.a.outputs.app }}
+          CANDIDATE: ${{ steps.a.outputs.candidate }}
+          VERDICT: ${{ steps.a.outputs.verdict }}
+        run: |
+          set -euo pipefail
+          color=d93f0b; [ "$VERDICT" = "NEEDS_REVIEW" ] && color=fbca04
+          label="$VERDICT"
+          gh label create "$label" --color "$color" --force 2>/dev/null || true
+          { echo "Upstream **${CANDIDATE}** for \`${APP}\` — verdict **${VERDICT}**."; \
+            echo; cat /tmp/report.md; } > /tmp/issue-body.md
+          # Avoid duplicate issues for the same app+version.
+          title="[${VERDICT}] ${APP} → ${CANDIDATE}"
+          if gh issue list --state open --search "$title in:title" \
+               --json title --jq '.[].title' | grep -qxF "$title"; then
+            echo "issue already open: $title"
+          else
+            gh issue create --title "$title" --body-file /tmp/issue-body.md --label "$label"
+          fi
