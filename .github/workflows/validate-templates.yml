@@ -62,6 +62,9 @@ jobs:
         env:
           APPS: ${{ steps.changed.outputs.apps }}
           BASE: ${{ steps.changed.outputs.base }}
+          # Optional LLM breaking-change pass (skipped gracefully when unset; not
+          # available on fork PRs, where secrets aren't exposed).
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           set -e
           rc=0

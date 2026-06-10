@@ -11,6 +11,13 @@ still satisfies our UNCHANGED compose/manifest contract. So the core analysis is
 an **image-contract diff + a real boot test**, plus a manifest/compose lint and
 (for human-edited PRs) a form/exposure contract diff against the base branch.
 
+It also reads the image's *code* — diffing the filesystem for security/behavior
+identifiers (origin/CORS/host checks, etc.) that metadata + a curl boot test can't
+see — and (optionally) runs an LLM breaking-change pass over that diff + the
+image's CHANGELOG via OpenRouter. The LLM pass is gated on OPENROUTER_API_KEY and
+skips gracefully when unset; everything else is pure stdlib + the docker CLI, with
+no dependency on the private Suji monorepo.
+
 Subcommands:
   poll      For each app, find the newest stable upstream tag and print a JSON
             matrix of the apps whose pinned version is behind. (schedule trigger)
@@ -168,6 +175,7 @@ class Report:
     findings: list[Finding] = field(default_factory=list)
     contract_diff: list[str] = field(default_factory=list)
     boot: dict | None = None
+    llm: dict | None = None
 
     def add(self, level, code, message):
         self.findings.append(Finding(level, code, message))
@@ -577,6 +585,183 @@ def boot_test(app: str, manifest: dict, compose_text: str, report: Report):
         subprocess.run(compose_cmd("down", "-v"), capture_output=True, check=False)
 
 
+# ── code-level signal diff (reads the image's code, not just metadata) ─────────
+# The contract diff + boot test see metadata + runtime, not source — so an in-code
+# behavior change (e.g. a new browser-origin check that rejects our tunnel domain
+# but still returns 200 to curl) is invisible to them. This scans the image
+# filesystem for security/behavior-relevant identifiers and flags ones that are
+# newly present (or much expanded) in the new image. It's a heuristic signal that
+# feeds the LLM pass; on its own it gates as a WARN (demoted to a note if the LLM
+# pass judges the change benign in context).
+RISK_TOKENS = {
+    "allowedOrigins": "browser-origin allowlist for a control UI / websocket",
+    "allowed_origins": "browser-origin allowlist",
+    "ALLOWED_HOSTS": "host allowlist — rejects requests with an unknown Host header",
+    "trustedHosts": "trusted-host allowlist",
+    "trusted_proxies": "trusted reverse-proxy list",
+    "dangerouslyAllow": "explicit 'dangerous' origin/host/auth escape hatch",
+    "X-Forwarded": "reverse-proxy forwarded-header handling",
+    "csrf": "CSRF protection",
+    "CORS": "cross-origin resource sharing policy",
+}
+
+
+def image_text_signal(image: str, workdir: str | None) -> dict:
+    """Count files under the image's workdir that mention each risk token."""
+    toks = "\n".join(RISK_TOKENS.keys())
+    # cd to workdir ($0); for each token, count matching files (bounded).
+    script = (
+        'cd "$0" 2>/dev/null || cd / ; '
+        'while IFS= read -r t; do '
+        '  c=$(grep -rIlF -e "$t" . 2>/dev/null | head -3000 | wc -l | tr -d " ") ; '
+        '  printf "%s=%s\\n" "$t" "$c" ; '
+        'done <<TOKLIST\n' + toks + '\nTOKLIST'
+    )
+    out = docker("run", "--rm", "--entrypoint", "sh", image, "-c", script,
+                 (workdir or "/app"), timeout=300).stdout
+    counts = {}
+    for line in out.splitlines():
+        k, sep, v = line.rpartition("=")
+        if sep and v.strip().isdigit():
+            counts[k] = int(v.strip())
+    return counts
+
+
+def compute_code_signals(old_image: str, new_image: str, workdir: str | None) -> dict:
+    """Diff risk-token presence between two images. Returns introduced/grew lists."""
+    old = image_text_signal(old_image, workdir)
+    new = image_text_signal(new_image, workdir)
+    introduced, grew = [], []
+    for tok, desc in RISK_TOKENS.items():
+        o, n = old.get(tok, 0), new.get(tok, 0)
+        if o == 0 and n > 0:
+            introduced.append((tok, n, desc))
+        elif n > o > 0 and n >= o * 2:
+            grew.append((tok, o, n, desc))
+    return {"introduced": introduced, "grew": grew, "old": old, "new": new}
+
+
+def extract_changelog(image: str, old_version: str | None,
+                      new_version: str | None, workdir: str | None) -> str | None:
+    """Pull the CHANGELOG section between old_version and new_version from the image."""
+    cands = [f"{(workdir or '/app').rstrip('/')}/CHANGELOG.md", "/CHANGELOG.md",
+             "/app/CHANGELOG.md", f"{(workdir or '/app').rstrip('/')}/CHANGES.md"]
+    script = "".join(f'if [ -f "{c}" ]; then cat "{c}"; exit 0; fi; ' for c in cands)
+    txt = docker("run", "--rm", "--entrypoint", "sh", image, "-c", script,
+                 timeout=120, check=False).stdout
+    if not txt.strip():
+        return None
+    lines = txt.splitlines()
+    nv = (new_version or "").lstrip("v")
+    ov = (old_version or "").lstrip("v")
+    start = next((i for i, l in enumerate(lines) if nv and nv in l), 0)
+    end = next((i for i, l in enumerate(lines[start + 1:], start + 1) if ov and ov in l),
+               min(start + 100, len(lines)))
+    excerpt = "\n".join(lines[start:end]).strip() or "\n".join(lines[:100])
+    return excerpt[:6000]
+
+
+# ── LLM breaking-change pass (OpenRouter, pure-HTTP — no SDK) ───────────────────
+# Provider-agnostic via OpenRouter's OpenAI-compatible endpoint. Gated on
+# OPENROUTER_API_KEY; skips gracefully (deterministic checks still run) when unset.
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+LLM_MODEL = os.environ.get("CI_LLM_MODEL", "deepseek/deepseek-v4-flash")
+
+LLM_SYSTEM = (
+    "You are a release-safety reviewer for the Suji app marketplace. Apps run as "
+    "Docker containers on per-customer VMs behind a Cloudflare tunnel: each install "
+    "is reachable only at its own https://<subdomain>.suji.fr, the tunnel forwards "
+    "the original Host header, the published port is not exposed except through the "
+    "tunnel, and the app is protected by its own auth (e.g. a gateway token). We are "
+    "bumping ONLY an app's pinned image tag — nothing else in our compose/manifest "
+    "changes. Decide whether moving to the new tag is SAFE, NEEDS_REVIEW, or BREAKING "
+    "for this reverse-proxied, one-subdomain-per-install deployment. Weigh: "
+    "browser-origin / CORS / CSRF / trusted-host checks that could reject the "
+    "per-install subdomain (returns 200 to curl but breaks the real browser); changes "
+    "to the listening port or bind address; changes to the data directory or volume "
+    "layout (silent state loss); renamed or removed env vars our compose sets; newly "
+    "required configuration. A change that only affects features we don't use is SAFE. "
+    "Return strict JSON matching the schema; keep summary and risks concise."
+)
+
+VERDICT_SCHEMA = {
+    "name": "breaking_change_verdict",
+    "strict": True,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "verdict": {"type": "string", "enum": ["safe", "needs_review", "breaking"]},
+            "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+            "summary": {"type": "string"},
+            "risks": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["verdict", "confidence", "summary", "risks"],
+        "additionalProperties": False,
+    },
+}
+
+
+def llm_assess(app: str, current: str | None, candidate: str | None,
+               changelog: str | None, signals: dict, report: Report) -> dict | None:
+    key = os.environ.get("OPENROUTER_API_KEY")
+    if not key:
+        report.add("info", "llm.skip",
+                   "LLM pass skipped (no OPENROUTER_API_KEY) — deterministic checks only.")
+        return None
+    sig = {
+        "introduced": [f"{t} (now in {n} files; {d})" for t, n, d in signals.get("introduced", [])],
+        "expanded": [f"{t} ({o}->{n} files; {d})" for t, o, n, d in signals.get("grew", [])],
+    }
+    user = (
+        f"App: {app}\nVersion bump: {current} -> {candidate}\n\n"
+        f"Security/behavior identifiers newly present or expanded in the NEW image vs the old:\n"
+        f"{json.dumps(sig, indent=2)}\n\n"
+        f"Image contract diff (docker inspect): {'; '.join(report.contract_diff) or 'none'}\n\n"
+        f"CHANGELOG excerpt between the two versions (from the image, may be empty):\n"
+        f"{changelog or '(no changelog found in image)'}"
+    )
+    body = json.dumps({
+        "model": LLM_MODEL,
+        "messages": [{"role": "system", "content": LLM_SYSTEM},
+                     {"role": "user", "content": user}],
+        "response_format": {"type": "json_schema", "json_schema": VERDICT_SCHEMA},
+        "max_tokens": 2000,
+    }).encode()
+    req = urllib.request.Request(OPENROUTER_URL, data=body, method="POST", headers={
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://github.com/suji-hq/suji-templates",
+        "X-Title": "suji-templates-ci",
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            resp = json.loads(r.read().decode())
+        data = json.loads(resp["choices"][0]["message"]["content"])
+    except Exception as e:
+        report.add("info", "llm.error", f"LLM pass errored (non-fatal): {e}")
+        return None
+    verdict = data.get("verdict", "needs_review")
+    level = {"breaking": "error", "needs_review": "warn", "safe": "note"}.get(verdict, "warn")
+    risks = "; ".join(data.get("risks", []) or [])
+    report.add(level, "llm",
+               f"{LLM_MODEL} ({data.get('confidence', '?')} confidence): "
+               f"{data.get('summary', '')}" + (f" — risks: {risks}" if risks else ""))
+    report.llm = data
+    return data
+
+
+def add_code_signal_findings(signals: dict, llm: dict | None, report: Report):
+    """Add code-signal findings. They gate as WARN unless the LLM judged the bump
+    SAFE in context, in which case they're demoted to non-blocking notes."""
+    soft = bool(llm and llm.get("verdict") == "safe")
+    for tok, n, desc in signals.get("introduced", []):
+        report.add("note" if soft else "warn", "codesignal.new",
+                   f"`{tok}` is newly present in the new image ({n} files, absent before) "
+                   f"— {desc}. Confirm it doesn't reject our per-install subdomain / proxy path.")
+    for tok, o, n, desc in signals.get("grew", []):
+        report.add("note", "codesignal.grew", f"`{tok}` expanded {o}→{n} files — {desc}.")
+
+
 # ── report rendering ──────────────────────────────────────────────────────────
 EMOJI = {"SAFE": "✅", "NEEDS_REVIEW": "⚠️", "BREAKING": "🛑"}
 
@@ -707,6 +892,8 @@ def cmd_analyze(args):
     # Common: lint + image-contract diff + boot test on the (proposed) template.
     lint_template(manifest, compose, compose_text, app, report)
 
+    new_contract = None
+    new_repo = new_tag = None
     try:
         _, svc = primary_service(manifest, compose)
         new_repo, new_tag = image_ref_parts(str((svc or {}).get("image", "")))
@@ -716,6 +903,22 @@ def cmd_analyze(args):
             diff_contract(old_contract, new_contract, report)
     except Exception as e:
         report.add("warn", "contract.skip", f"image contract diff skipped: {e}")
+
+    # Code-level analysis: read the image's source for security/behavior changes the
+    # contract diff can't see, then let the LLM pass judge them in context against our
+    # reverse-proxied deployment. Only meaningful across a real tag change.
+    if not args.no_llm and new_repo and new_tag and report.current_version \
+            and report.current_version != new_tag:
+        try:
+            wd = (new_contract or {}).get("workdir")
+            signals = compute_code_signals(f"{new_repo}:{report.current_version}",
+                                           f"{new_repo}:{new_tag}", wd)
+            changelog = extract_changelog(f"{new_repo}:{new_tag}",
+                                          report.current_version, new_tag, wd)
+            llm = llm_assess(app, report.current_version, new_tag, changelog, signals, report)
+            add_code_signal_findings(signals, llm, report)
+        except Exception as e:
+            report.add("info", "codelevel.skip", f"code-level analysis skipped: {e}")
 
     if not args.no_boot:
         try:
@@ -769,6 +972,8 @@ def main():
     a.add_argument("--from-worktree", action="store_true",
                    help="PR mode: analyze the working-tree template as edited")
     a.add_argument("--no-boot", action="store_true", help="skip the docker boot test")
+    a.add_argument("--no-llm", action="store_true",
+                   help="skip the code-signal diff + OpenRouter LLM breaking-change pass")
     a.add_argument("--fail-on-breaking", action="store_true",
                    help="exit non-zero when the verdict is BREAKING")
     a.set_defaults(func=cmd_analyze)

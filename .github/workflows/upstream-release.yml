@@ -104,6 +104,9 @@ jobs:
         env:
           APP: ${{ matrix.app }}
           VERSION: ${{ matrix.version }}
+          # Optional: activates the OpenRouter LLM breaking-change pass. The
+          # analyzer skips it gracefully when the secret is unset.
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           set -euo pipefail
           args=(analyze "$APP" --base HEAD)

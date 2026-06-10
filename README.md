@@ -92,12 +92,30 @@ CI lives in `.github/workflows/` and is driven by `scripts/marketplace_ci.py`
   **NEEDS_REVIEW / BREAKING** → opens an issue with the report. It never bumps a
   live template on its own.
 
-  Note: `curl 200` in the boot test proves the app serves, but not that a
-  browser-origin/CORS check will accept the per-install `https://<sub>.suji.fr`
-  — for apps with a web UI that's flagged as `NEEDS_REVIEW` for a human to
-  confirm (see the OpenClaw `init-config` for the Host-header-fallback pattern).
-  The poll is a best-effort detector and doesn't track per-app tag variants
-  (e.g. `-alpine`); always sanity-check the candidate tag in the PR/issue.
+### Reading the image's code (the part `curl` can't see)
+
+`curl 200` proves the app serves, but not that an in-code browser-origin / CORS /
+trusted-host check will accept the per-install `https://<sub>.suji.fr` (such a
+check returns 200 to curl but rejects the real browser — this is what bit
+OpenClaw at upstream v2026.2.26). So the analyzer also **reads the image's
+filesystem**: it diffs both versions for security/behavior identifiers
+(`allowedOrigins`, `ALLOWED_HOSTS`, `CORS`, `dangerouslyAllow`, …) and flags ones
+newly present in the new image, and it extracts the image's `CHANGELOG.md` section
+between the two versions.
+
+An optional **LLM pass** then judges that diff + changelog against our deployment
+shape (reverse-proxied, one subdomain per install, behind token auth) and returns
+a `safe` / `needs_review` / `breaking` verdict with reasons. It runs via OpenRouter
+(`deepseek/deepseek-v4-flash` by default; override with `CI_LLM_MODEL`) using a
+plain HTTPS call — no SDK, still pure stdlib. Add an **`OPENROUTER_API_KEY`** repo
+secret to enable it; without the secret the LLM pass is skipped and the code-signal
+diff alone gates as `NEEDS_REVIEW`. When the LLM judges a flagged change `safe` in
+context, the code-signal findings are demoted to non-blocking notes. A `breaking`
+verdict escalates to `BREAKING`; the analyzer never auto-clears a hard finding
+(form/exposure regression, boot failure) on the LLM's say-so.
+
+The poll is a best-effort detector and doesn't track per-app tag variants
+(e.g. `-alpine`); always sanity-check the candidate tag in the PR/issue.
 
   The pipeline works as-is: it pushes the auto-bump branch and, if the org
   disallows Actions-created PRs, posts an issue with a one-click compare link.
