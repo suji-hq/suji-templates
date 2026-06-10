@@ -552,11 +552,18 @@ def boot_test(app: str, manifest: dict, compose_text: str, report: Report):
                 report.add("info", "boot.serve",
                            f"exposed port {port} returned HTTP {code}")
                 if manifest.get("exposure", {}).get("exposable"):
-                    report.add("warn", "boot.origin",
-                               "curl 200 confirms it serves, but cannot confirm a "
-                               "browser-origin/CORS check won't reject the per-install "
-                               "https://<sub>.suji.fr — inspect the app's origin policy "
-                               "if it has a web UI.")
+                    # Non-gating NOTE, not a warn: a clean bump doesn't *introduce*
+                    # an origin problem, and gating here would make every web app
+                    # permanently NEEDS_REVIEW (the SAFE auto-bump could never fire).
+                    # The reminder still rides in the PR/issue so a human confirms
+                    # at merge time. (Real origin regressions usually also move the
+                    # image contract — e.g. OpenClaw 2026.3.1 — which IS gated.)
+                    report.add("note", "boot.origin",
+                               "This app has a public web UI: curl 200 confirms it "
+                               "serves, but not that a browser-origin/CORS check will "
+                               "accept the per-install https://<sub>.suji.fr. Before "
+                               "merging, confirm the new version didn't change its "
+                               "origin policy (see OpenClaw 2026.3.1 init-config).")
         else:
             report.boot = {"ok": True, "http_code": None}
             report.add("info", "boot.serve", "no exposed port; container came up")
@@ -574,6 +581,7 @@ def render_markdown(r: Report) -> str:
         out.append(f"`{r.current_version}` → `{r.candidate_version}`\n")
     errs = [f for f in r.findings if f.level == "error"]
     warns = [f for f in r.findings if f.level == "warn"]
+    notes = [f for f in r.findings if f.level == "note"]
     infos = [f for f in r.findings if f.level == "info"]
     if errs:
         out.append("### 🛑 Breaking")
@@ -581,6 +589,9 @@ def render_markdown(r: Report) -> str:
     if warns:
         out.append("### ⚠️ Needs review")
         out += [f"- **{f.code}** — {f.message}" for f in warns] + [""]
+    if notes:
+        out.append("### 📌 Before merging (non-blocking)")
+        out += [f"- {f.message}" for f in notes] + [""]
     if r.contract_diff:
         out.append("### Image contract diff")
         out += [f"- {d}" for d in r.contract_diff] + [""]
