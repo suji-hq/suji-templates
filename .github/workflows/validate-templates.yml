@@ -92,8 +92,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           if [ -s /tmp/pr-report.md ]; then
-            { echo "🤖 **Marketplace template analysis**"; echo; cat /tmp/pr-report.md; } \
-              > /tmp/comment.md
-            gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md --edit-last 2>/dev/null \
-              || gh pr comment "$PR_NUMBER" --body-file /tmp/comment.md
+            gh pr comment "$PR_NUMBER" --body-file /tmp/pr-report.md --edit-last 2>/dev/null \
+              || gh pr comment "$PR_NUMBER" --body-file /tmp/pr-report.md
           fi

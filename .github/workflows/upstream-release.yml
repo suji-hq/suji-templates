@@ -130,35 +130,28 @@ jobs:
           git add "$APP/manifest.yaml" "$APP/compose.yaml"
           git commit -m "${APP} ${CANDIDATE}: auto-bump from ${CURRENT} (SAFE)"
           git push -u origin "$branch" --force-with-lease
-          {
-            echo "Automated version bump — analysis verdict: **SAFE**."
-            echo
-            cat /tmp/report.md
-            echo
-            echo "> ⚠️ Review \`release_notes\` in the manifest before merging — the"
-            echo "> bump only changes the image tag + version."
-          } > /tmp/pr-body.md
-          gh label create safe-auto-bump --color 0e8a16 --force 2>/dev/null || true
+          FOOTER="Only the image tag and version changed — please update the release notes in the manifest before merging."
+          { cat /tmp/report.md; echo; echo "$FOOTER"; } > /tmp/pr-body.md
+          gh label create "update available" --color 0e8a16 --force 2>/dev/null || true
+          TITLE="Update ${APP} to ${CANDIDATE}"
           REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
-          # The branch is already pushed. Try to open the PR with GITHUB_TOKEN;
-          # if the org disallows Actions-created PRs (or the PR exists), fall back
-          # to an issue carrying a one-click compare link so a human finishes it.
-          if gh pr create --title "${APP} ${CANDIDATE}: auto-bump (SAFE)" \
-               --body-file /tmp/pr-body.md --label safe-auto-bump --head "$branch"; then
+          # The branch is already pushed. Try to open the PR with GITHUB_TOKEN; if the
+          # org disallows Actions-created PRs (or the PR exists), fall back to an issue
+          # with a one-click link so a human finishes it.
+          if gh pr create --title "$TITLE" \
+               --body-file /tmp/pr-body.md --label "update available" --head "$branch"; then
             echo "opened PR for $branch"
           else
             echo "auto-PR unavailable (org policy or PR exists); using issue fallback"
-            { echo "Auto-bump branch \`${branch}\` is pushed; analysis is **SAFE**, but"
-              echo "this workflow could not open the PR itself."; echo
-              echo "👉 **[Open the PR](${REPO_URL}/compare/main...${branch}?expand=1)**"; echo
-              cat /tmp/pr-body.md; } > /tmp/fallback.md
-            title="[auto-bump] ${APP} → ${CANDIDATE}"
-            if gh issue list --state open --search "$title in:title" --json title \
-                 --jq '.[].title' | grep -qxF "$title"; then
+            { cat /tmp/report.md; echo
+              echo "The change is ready on branch \`${branch}\`. [Open the pull request](${REPO_URL}/compare/main...${branch}?expand=1) to merge it."
+              echo; echo "$FOOTER"; } > /tmp/fallback.md
+            if gh issue list --state open --search "$TITLE in:title" --json title \
+                 --jq '.[].title' | grep -qxF "$TITLE"; then
               echo "fallback issue already open"
             else
-              gh issue create --title "$title" --body-file /tmp/fallback.md \
-                --label safe-auto-bump
+              gh issue create --title "$TITLE" --body-file /tmp/fallback.md \
+                --label "update available"
             fi
           fi
 
@@ -171,16 +164,17 @@ jobs:
           VERDICT: ${{ steps.a.outputs.verdict }}
         run: |
           set -euo pipefail
-          color=d93f0b; [ "$VERDICT" = "NEEDS_REVIEW" ] && color=fbca04
-          label="$VERDICT"
+          # Plain, scannable label + title; the report headline carries the verdict.
+          if [ "$VERDICT" = "BREAKING" ]; then
+            label="don't update"; color=d93f0b; title="Don't update ${APP} to ${CANDIDATE} yet"
+          else
+            label="review first"; color=fbca04; title="Review ${APP} ${CANDIDATE} before updating"
+          fi
           gh label create "$label" --color "$color" --force 2>/dev/null || true
-          { echo "Upstream **${CANDIDATE}** for \`${APP}\` — verdict **${VERDICT}**."; \
-            echo; cat /tmp/report.md; } > /tmp/issue-body.md
-          # Avoid duplicate issues for the same app+version.
-          title="[${VERDICT}] ${APP} → ${CANDIDATE}"
+          # The clean report already leads with the conclusion — no preamble needed.
           if gh issue list --state open --search "$title in:title" \
                --json title --jq '.[].title' | grep -qxF "$title"; then
             echo "issue already open: $title"
           else
-            gh issue create --title "$title" --body-file /tmp/issue-body.md --label "$label"
+            gh issue create --title "$title" --body-file /tmp/report.md --label "$label"
           fi

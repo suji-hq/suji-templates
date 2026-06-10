@@ -573,11 +573,9 @@ def boot_test(app: str, manifest: dict, compose_text: str, report: Report):
                     # at merge time. (Real origin regressions usually also move the
                     # image contract — e.g. OpenClaw 2026.3.1 — which IS gated.)
                     report.add("note", "boot.origin",
-                               "This app has a public web UI: curl 200 confirms it "
-                               "serves, but not that a browser-origin/CORS check will "
-                               "accept the per-install https://<sub>.suji.fr. Before "
-                               "merging, confirm the new version didn't change its "
-                               "origin policy (see OpenClaw 2026.3.1 init-config).")
+                               "This app has a public web UI. A passing health check "
+                               "doesn't prove the browser side works through the tunnel "
+                               "— open it once after upgrading to confirm.")
         else:
             report.boot = {"ok": True, "http_code": None}
             report.add("info", "boot.serve", "no exposed port; container came up")
@@ -756,44 +754,68 @@ def add_code_signal_findings(signals: dict, llm: dict | None, report: Report):
     soft = bool(llm and llm.get("verdict") == "safe")
     for tok, n, desc in signals.get("introduced", []):
         report.add("note" if soft else "warn", "codesignal.new",
-                   f"`{tok}` is newly present in the new image ({n} files, absent before) "
-                   f"— {desc}. Confirm it doesn't reject our per-install subdomain / proxy path.")
+                   f"The new version adds a {desc} (`{tok}`). Confirm it still accepts "
+                   f"requests at the per-install `*.suji.fr` address before merging.")
     for tok, o, n, desc in signals.get("grew", []):
-        report.add("note", "codesignal.grew", f"`{tok}` expanded {o}→{n} files — {desc}.")
+        report.add("note", "codesignal.grew",
+                   f"The new version expands its {desc} (`{tok}`). Usually harmless — "
+                   f"worth a glance if the app has a login or control UI.")
 
 
 # ── report rendering ──────────────────────────────────────────────────────────
-EMOJI = {"SAFE": "✅", "NEEDS_REVIEW": "⚠️", "BREAKING": "🛑"}
+# Calm, plain-language report: lead with the conclusion, keep sections short and
+# in sentence case, no status emoji or machine-style "code —" prefixes.
+HEADLINE = {
+    "SAFE": "{app} can safely move from {cur} to {cand}.",
+    "NEEDS_REVIEW": "{app} {cur} → {cand} — worth a look before merging.",
+    "BREAKING": "{app} {cur} → {cand} — not safe to merge as-is.",
+}
+SUMMARY = {
+    "SAFE": "It starts and serves normally, and nothing changed that affects existing installs.",
+    "NEEDS_REVIEW": "It starts and serves, but a few changes are worth confirming first.",
+    "BREAKING": "Some of the changes below would break existing installs or the running app.",
+}
 
 
 def render_markdown(r: Report) -> str:
-    out = [f"## {EMOJI[r.verdict]} `{r.app}` — **{r.verdict}**", ""]
-    if r.current_version or r.candidate_version:
-        out.append(f"`{r.current_version}` → `{r.candidate_version}`\n")
+    v = r.verdict
+    cur = r.current_version or "the current version"
+    cand = r.candidate_version or "the new version"
+    out = [HEADLINE[v].format(app=r.app, cur=cur, cand=cand), "", SUMMARY[v], ""]
+
+    if r.llm and r.llm.get("summary"):
+        model = LLM_MODEL.split("/")[-1]
+        conf = r.llm.get("confidence", "")
+        out += [f"Automated review ({model}, {conf} confidence): {r.llm['summary']}", ""]
+
     errs = [f for f in r.findings if f.level == "error"]
-    warns = [f for f in r.findings if f.level == "warn"]
-    notes = [f for f in r.findings if f.level == "note"]
-    infos = [f for f in r.findings if f.level == "info"]
+    warns = [f for f in r.findings if f.level == "warn" and f.code != "llm"]
+    notes = [f for f in r.findings if f.level == "note" and f.code != "llm"]
     if errs:
-        out.append("### 🛑 Breaking")
-        out += [f"- **{f.code}** — {f.message}" for f in errs] + [""]
+        out += ["### What's blocking", ""] + [f"- {f.message}" for f in errs] + [""]
     if warns:
-        out.append("### ⚠️ Needs review")
-        out += [f"- **{f.code}** — {f.message}" for f in warns] + [""]
+        out += ["### Before you merge", ""] + [f"- {f.message}" for f in warns] + [""]
     if notes:
-        out.append("### 📌 Before merging (non-blocking)")
-        out += [f"- {f.message}" for f in notes] + [""]
-    if r.contract_diff:
-        out.append("### Image contract diff")
-        out += [f"- {d}" for d in r.contract_diff] + [""]
+        out += ["### Good to know", ""] + [f"- {f.message}" for f in notes] + [""]
+
+    checks = []
     if r.boot:
-        b = r.boot
-        out.append(f"### Boot test\n- result: {'pass' if b.get('ok') else 'FAIL'}"
-                   f" (HTTP {b.get('http_code')})\n")
+        if r.boot.get("ok"):
+            code = r.boot.get("http_code")
+            checks.append(f"Starts and serves — yes{f' (HTTP {code})' if code else ''}.")
+        else:
+            checks.append("Starts and serves — no (see above).")
+    if r.contract_diff:
+        clean = ("no change" if r.contract_diff == ["no contract drift in user/workdir/cmd/ports"]
+                 else "; ".join(r.contract_diff))
+        checks.append(f"Image internals (user, working directory, command, ports) — {clean}.")
+    if checks:
+        out += ["### What was checked", ""] + [f"- {c}" for c in checks] + [""]
+
+    infos = [f for f in r.findings if f.level == "info"]
     if infos:
-        out += ["<details><summary>info</summary>", ""]
-        out += [f"- {f.code}: {f.message}" for f in infos] + ["", "</details>"]
-    return "\n".join(out)
+        out += ["_" + "  ".join(f.message for f in infos) + "_"]
+    return "\n".join(out).rstrip() + "\n"
 
 
 def emit_outputs(r: Report, markdown: str):
