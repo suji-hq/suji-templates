@@ -4,7 +4,7 @@ name: OpenClaw
 description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.5
+version: 2026.2.3
 release_notes: First marketplace release. Image pulled directly from upstream openclaw/openclaw.
 categories: [communication, automation]
 license: MIT
