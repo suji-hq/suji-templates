@@ -4,16 +4,14 @@ name: OpenClaw
 description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.3.1-1
+version: 2026.3.1-2
 release_notes: >-
-  Same upstream OpenClaw 2026.3.1 image. Fixes the AI provider wiring: the
-  install form's provider + API key now reach the app (previously the generic
-  AI_PROVIDER/AI_API_KEY env vars were set but the gateway never read them, so
-  installs booted unconfigured). Adds the full set of providers the app
-  supports — Anthropic, OpenAI, Google (Gemini), Mistral, Groq, OpenRouter,
-  xAI, Moonshot AI — plus an OpenAI-compatible option with a custom base URL
-  (vLLM, Ollama, LM Studio, LiteLLM, …) where the API key is optional. Pick
-  the exact model in the Control UI after first connect.
+  Same upstream OpenClaw 2026.3.1 image. The install form is now adaptive:
+  the custom endpoint base URL only appears when you pick OpenAI-compatible
+  (where it is required and the API key optional); for cloud providers the
+  API key is required. A new Test connection button verifies the key against
+  the chosen provider before you deploy. Pick the exact model in the Control
+  UI after first connect.
 categories: [communication, automation]
 license: MIT
 
@@ -58,14 +56,21 @@ form_schema:
   - key: AI_BASE_URL
     type: text
     label: Custom endpoint base URL
-    description: Only for OpenAI-compatible — the endpoint's base URL, e.g. https://llm.example.com/v1. Leave blank for the providers above.
+    description: The endpoint's base URL, e.g. https://llm.example.com/v1.
     default: ""
+    show_if: { key: AI_PROVIDER, in: [openai-compatible] }
+    required_if: { key: AI_PROVIDER, in: [openai-compatible] }
 
   - key: AI_API_KEY
     type: secret
     label: AI API key
     description: Your API key for the chosen provider. Optional for OpenAI-compatible endpoints that don't require authentication.
     default: ""
+    required_if: { key: AI_PROVIDER, in: [anthropic, openai, google, mistral, groq, openrouter, xai, moonshot] }
+    connection_test:
+      kind: ai_provider
+      provider_key: AI_PROVIDER
+      base_url_key: AI_BASE_URL
 
   - key: OPENCLAW_GATEWAY_PASSWORD
     type: secret
