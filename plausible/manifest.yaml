@@ -27,6 +27,7 @@ upgrade_policy: manual
 
 registry:
   - docker.io
+  - ghcr.io
 
 form_schema:
   - key: BASE_URL

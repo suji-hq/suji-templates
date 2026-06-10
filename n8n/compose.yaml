@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: docker.io/n8nio/n8n:1.62.0
+    image: docker.io/n8nio/n8n:2.22.2
     restart: unless-stopped
     environment:
       N8N_BASIC_AUTH_ACTIVE: "true"

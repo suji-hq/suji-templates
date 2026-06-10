@@ -1,6 +1,6 @@
 services:
   plausible:
-    image: docker.io/plausible/community-edition:v2.1.5
+    image: ghcr.io/plausible/community-edition:v2.1.5
     restart: unless-stopped
     environment:
       BASE_URL: ${BASE_URL}
