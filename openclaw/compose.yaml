@@ -60,15 +60,16 @@ services:
         model="$$AI_MODEL"
         full=""
         if [ -n "$$model" ]; then
-          # User-supplied model: keep it as-is if already provider-qualified
-          # (contains a slash), else prefix the provider. openai-compatible
-          # routes through the openai provider (with OPENAI_BASE_URL).
+          # Prefix the chosen provider UNLESS the user already did. Model NAMES
+          # legitimately contain slashes (OpenRouter ids like nvidia/nemotron-…,
+          # Groq's meta-llama/…), so "has a slash" does NOT mean "already
+          # provider-qualified" — without this the leading path segment (e.g.
+          # "nvidia") is read as the provider and OpenClaw rejects it as unknown.
+          # openai-compatible routes through the openai provider (OPENAI_BASE_URL).
+          case "$$prov" in openai-compatible) pkey=openai;; *) pkey="$$prov";; esac
           case "$$model" in
-            */*) full="$$model";;
-            *) case "$$prov" in
-                 openai-compatible) full="openai/$$model";;
-                 *) full="$$prov/$$model";;
-               esac;;
+            "$$pkey"/*) full="$$model";;
+            *)          full="$$pkey/$$model";;
           esac
         else
           # Blank: a current default per provider, with model ids valid in the
