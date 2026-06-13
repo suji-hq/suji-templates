@@ -37,15 +37,60 @@ services:
   #     origin (CSRF) attempts (Origin host != Host), unlike allowedOrigins:["*"]
   #     which would disable the check entirely. See upstream issue #29385.
   init-config:
-    image: ghcr.io/openclaw/openclaw:2026.3.1
+    image: ghcr.io/openclaw/openclaw:2026.6.6
     user: "1000"
     depends_on:
       init-perms:
         condition: service_completed_successfully
     entrypoint: ["/bin/sh", "-c"]
-    command: ["node dist/index.js config set gateway.mode local && node dist/index.js config set gateway.bind lan && node dist/index.js config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true"]
+    # Besides the gateway settings, select a DEFAULT MODEL that matches the
+    # chosen provider. OpenClaw's built-in default is an Anthropic model
+    # (agents.defaults.model.primary), so without this the agent stays pointed
+    # at Anthropic and every non-Anthropic provider boots with a key the active
+    # model can't use — the LLM silently never replies. `models set` writes the
+    # primary model into the persisted openclaw.json, which the gateway reads at
+    # startup. $$VAR escaping (see the openclaw service) keeps user values in the
+    # environment, never spliced into the script text — no injection surface.
+    command:
+      - |
+        node dist/index.js config set gateway.mode local
+        node dist/index.js config set gateway.bind lan
+        node dist/index.js config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true
+        prov="$$AI_PROVIDER"
+        model="$$AI_MODEL"
+        full=""
+        if [ -n "$$model" ]; then
+          # User-supplied model: keep it as-is if already provider-qualified
+          # (contains a slash), else prefix the provider. openai-compatible
+          # routes through the openai provider (with OPENAI_BASE_URL).
+          case "$$model" in
+            */*) full="$$model";;
+            *) case "$$prov" in
+                 openai-compatible) full="openai/$$model";;
+                 *) full="$$prov/$$model";;
+               esac;;
+          esac
+        else
+          # Blank: a current default per provider, with model ids valid in the
+          # pinned image's catalog. The built-in default is openai/gpt-5.5, so
+          # EVERY other provider (anthropic included) needs an explicit match.
+          # openrouter / moonshot / openai-compatible have no safe default — the
+          # form requires a model for those.
+          case "$$prov" in
+            anthropic) full="anthropic/claude-sonnet-4-6";;
+            openai) full="openai/gpt-5.5";;
+            google) full="google/gemini-3.1-pro-preview";;
+            mistral) full="mistral/mistral-large-latest";;
+            groq) full="groq/llama-3.3-70b-versatile";;
+            xai) full="xai/grok-4.3";;
+          esac
+        fi
+        [ -n "$$full" ] && node dist/index.js models set "$$full"
+        exit 0
     environment:
       HOME: "/home/node"
+      AI_PROVIDER: "${AI_PROVIDER}"
+      AI_MODEL: "${AI_MODEL}"
     volumes:
       - openclaw-data:/home/node/.openclaw
     deploy:
@@ -55,7 +100,7 @@ services:
           cpus: "0.5"
 
   openclaw:
-    image: ghcr.io/openclaw/openclaw:2026.3.1
+    image: ghcr.io/openclaw/openclaw:2026.6.6
     restart: unless-stopped
     depends_on:
       init-config:
@@ -104,11 +149,11 @@ services:
       AI_PROVIDER: "${AI_PROVIDER}"
       AI_API_KEY: "${AI_API_KEY}"
       AI_BASE_URL: "${AI_BASE_URL}"
-      CHANNELS: "${CHANNELS}"
+      # Channel tokens are read straight from the environment by the gateway,
+      # which auto-enables the channel at startup when its token is present (no
+      # `channels add` / config write needed). Blank = that channel is skipped.
       TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
       DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN}"
-      WHATSAPP_TOKEN: "${WHATSAPP_TOKEN}"
-      SLACK_BOT_TOKEN: "${SLACK_BOT_TOKEN}"
     ports:
       - "18789"
     volumes:

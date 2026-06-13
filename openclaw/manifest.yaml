@@ -4,14 +4,18 @@ name: OpenClaw
 description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.3.1-2
+version: 2026.6.6-1
 release_notes: >-
-  Same upstream OpenClaw 2026.3.1 image. The install form is now adaptive:
-  the custom endpoint base URL only appears when you pick OpenAI-compatible
-  (where it is required and the API key optional); for cloud providers the
-  API key is required. A new Test connection button verifies the key against
-  the chosen provider before you deploy. Pick the exact model in the Control
-  UI after first connect.
+  Updates OpenClaw to upstream 2026.6.6, and fixes the AI provider never
+  engaging unless it happened to match OpenClaw's built-in default model (now
+  openai/gpt-5.5). Picking Anthropic / Google / Mistral / Groq / xAI left the
+  agent on that default with no matching key — the LLM never replied. The
+  install now selects a model that matches your chosen provider. New optional
+  Model field: leave blank for the provider's default; required for
+  OpenAI-compatible, OpenRouter, and Moonshot. Channels are enabled by presence
+  — provide a Telegram or Discord bot token to turn that channel on. WhatsApp
+  (QR pairing) and Slack (bot + app token) are set up after install for now;
+  see the README.
 categories: [communication, automation]
 license: MIT
 
@@ -72,46 +76,39 @@ form_schema:
       provider_key: AI_PROVIDER
       base_url_key: AI_BASE_URL
 
+  - key: AI_MODEL
+    type: text
+    label: Model
+    description: >-
+      The model OpenClaw replies with, e.g. gpt-5.5, claude-sonnet-4-6, or
+      gemini-3.1-pro-preview. Leave blank to use a sensible default for the
+      chosen provider. Required for OpenAI-compatible, OpenRouter, and Moonshot
+      (no default is possible). You can change it later in the Control UI.
+    default: ""
+    required_if: { key: AI_PROVIDER, in: [openai-compatible, openrouter, moonshot] }
+
   - key: OPENCLAW_GATEWAY_PASSWORD
     type: secret
     label: Gateway password
     description: Auto-generated if blank — used to authenticate the bot's webhook callbacks.
     auto_generate: true
 
-  - key: CHANNELS
-    type: multiselect
-    label: Channels
-    description: Messaging platforms OpenClaw connects to.
-    required: true
-    options:
-      - { value: telegram, label: Telegram }
-      - { value: discord, label: Discord }
-      - { value: whatsapp, label: WhatsApp Cloud API }
-      - { value: slack, label: Slack }
-
-  # Per-channel tokens — `default: ""` lets unselected channels render the
-  # compose with an empty string instead of leaving `${VAR}` unresolved at
-  # deploy time. OpenClaw treats empty channel tokens as "channel disabled".
+  # Channels are enabled by presence: provide a bot token and OpenClaw's
+  # gateway auto-enables that channel at startup, reading the token straight
+  # from the env var (no `channels add` needed). Leave a token blank to skip
+  # that channel. There is no CHANNELS selector — the gateway does not read
+  # one; the token's presence is the switch. WhatsApp (QR pairing) and Slack
+  # (needs both a bot and an app token) don't fit a single install-time secret
+  # and are configured after install — see the README. `default: ""` keeps the
+  # compose ${VAR} resolved when blank.
   - key: TELEGRAM_BOT_TOKEN
     type: secret
     label: Telegram bot token
-    description: From @BotFather. Required if Telegram is selected.
+    description: From @BotFather. Provide it to enable Telegram; leave blank to skip.
     default: ""
 
   - key: DISCORD_BOT_TOKEN
     type: secret
     label: Discord bot token
-    description: From the Discord developer portal. Required if Discord is selected.
-    default: ""
-
-  - key: WHATSAPP_TOKEN
-    type: secret
-    label: WhatsApp Cloud API token
-    description: From Meta Business. Required if WhatsApp is selected.
-    default: ""
-
-  - key: SLACK_BOT_TOKEN
-    type: secret
-    label: Slack bot token
-    description: From Slack app config. Required if Slack is selected.
+    description: From the Discord developer portal. Provide it to enable Discord; leave blank to skip.
     default: ""
