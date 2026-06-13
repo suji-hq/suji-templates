@@ -392,9 +392,16 @@ def lint_template(manifest: dict, compose: dict, compose_text: str,
         if pinned_tag in (None, "latest", "main"):
             report.add("error", "image.tag",
                        f"primary image must pin an immutable tag, got {pinned_tag!r}")
-        elif version and pinned_tag != str(version):
-            report.add("error", "version.match",
-                       f"manifest.version {version!r} != image tag {pinned_tag!r}")
+        elif version:
+            # Suji convention: manifest.version is the upstream image tag plus an
+            # OPTIONAL `-<rev>` packaging suffix, so a template-only fix can ship a
+            # fresh catalog version without a phantom upstream image bump. Accept
+            # `<tag>` or `<tag>-<rev>`; only a real tag/version mismatch is an error.
+            base_ver = re.sub(r"-\d+$", "", str(version))
+            if base_ver != str(pinned_tag):
+                report.add("error", "version.match",
+                           f"manifest.version {version!r} must be the image tag "
+                           f"{pinned_tag!r} (optionally with a -<rev> suffix)")
 
     # form field shape
     form = manifest.get("form_schema") or []
@@ -466,9 +473,15 @@ def diff_form_contract(base_manifest: dict, head_manifest: dict, report: Report)
     base, head = by_key(base_manifest), by_key(head_manifest)
     for k, bf in base.items():
         if k not in head:
-            report.add("error", "form.removed",
-                       f"form key {k!r} was removed/renamed — existing installs "
-                       "store config under this key and will fail to re-render")
+            # Not breaking: on upgrade the platform prunes stored config to the
+            # active manifest (pruneConfigToManifest, persisted before the worker
+            # re-renders), so an orphaned value is dropped rather than failing the
+            # render. A removed key the compose STILL references is caught by the
+            # `compose.var` undeclared-var lint. So this is informational only.
+            report.add("warn", "form.removed",
+                       f"form key {k!r} was removed — existing installs lose any "
+                       "stored value for it on upgrade (the platform prunes orphaned "
+                       "config). Confirm the compose no longer references it.")
             continue
         hf = head[k]
         if bf.get("type") != hf.get("type"):
@@ -870,6 +883,7 @@ def cmd_poll(args):
 def cmd_analyze(args):
     app = args.app
     base_ref = args.base  # branch to diff the form/exposure contract against
+    old_image_tag = None  # base branch's pinned compose image tag (for the contract diff)
 
     if args.from_worktree:
         # PR mode: analyze the working-tree template as-is.
@@ -879,10 +893,18 @@ def cmd_analyze(args):
         # form/exposure contract diff vs base branch (catches human edits)
         if base_ref:
             bm = git_show(base_ref, f"{app}/manifest.yaml")
+            base_manifest = (load_yaml(bm) or {}) if bm else {}
             if bm:
-                base_manifest = load_yaml(bm) or {}
                 report.current_version = str(base_manifest.get("version"))
                 diff_form_contract(base_manifest, manifest, report)
+            # The OLD image tag is the base branch's pinned compose tag — NOT the
+            # manifest version (which carries a Suji `-<rev>` suffix the registry
+            # has no tag for). Using the version pulls a phantom tag and silently
+            # skips the contract + code-signal diffs.
+            bc = git_show(base_ref, f"{app}/compose.yaml")
+            if bc:
+                _, base_svc = primary_service(base_manifest, load_yaml(bc) or {})
+                _, old_image_tag = image_ref_parts(str((base_svc or {}).get("image", "")))
     else:
         # Release mode: propose bumping the on-`main` template's image tag to the
         # candidate version, then analyze the proposed result.
@@ -898,6 +920,7 @@ def cmd_analyze(args):
         repo, cur_tag = image_ref_parts(str((svc or {}).get("image", "")))
         candidate = args.version or latest_stable(registry_tags(repo))
         report = Report(app=app, current_version=cur_tag, candidate_version=candidate)
+        old_image_tag = cur_tag  # base compose tag = the real old image tag
         if not candidate:
             report.add("error", "no.candidate", "could not resolve a candidate version")
             _finish(report); return 0
@@ -920,8 +943,8 @@ def cmd_analyze(args):
         _, svc = primary_service(manifest, compose)
         new_repo, new_tag = image_ref_parts(str((svc or {}).get("image", "")))
         new_contract = image_contract(f"{new_repo}:{new_tag}")
-        if report.current_version and report.current_version != new_tag:
-            old_contract = image_contract(f"{new_repo}:{report.current_version}")
+        if old_image_tag and old_image_tag != new_tag:
+            old_contract = image_contract(f"{new_repo}:{old_image_tag}")
             diff_contract(old_contract, new_contract, report)
     except Exception as e:
         report.add("warn", "contract.skip", f"image contract diff skipped: {e}")
@@ -929,11 +952,11 @@ def cmd_analyze(args):
     # Code-level analysis: read the image's source for security/behavior changes the
     # contract diff can't see, then let the LLM pass judge them in context against our
     # reverse-proxied deployment. Only meaningful across a real tag change.
-    if not args.no_llm and new_repo and new_tag and report.current_version \
-            and report.current_version != new_tag:
+    if not args.no_llm and new_repo and new_tag and old_image_tag \
+            and old_image_tag != new_tag:
         try:
             wd = (new_contract or {}).get("workdir")
-            signals = compute_code_signals(f"{new_repo}:{report.current_version}",
+            signals = compute_code_signals(f"{new_repo}:{old_image_tag}",
                                            f"{new_repo}:{new_tag}", wd)
             changelog = extract_changelog(f"{new_repo}:{new_tag}",
                                           report.current_version, new_tag, wd)
