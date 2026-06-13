@@ -4,18 +4,13 @@ name: OpenClaw
 description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-1
+version: 2026.6.6-2
 release_notes: >-
-  Updates OpenClaw to upstream 2026.6.6, and fixes the AI provider never
-  engaging unless it happened to match OpenClaw's built-in default model (now
-  openai/gpt-5.5). Picking Anthropic / Google / Mistral / Groq / xAI left the
-  agent on that default with no matching key — the LLM never replied. The
-  install now selects a model that matches your chosen provider. New optional
-  Model field: leave blank for the provider's default; required for
-  OpenAI-compatible, OpenRouter, and Moonshot. Channels are enabled by presence
-  — provide a Telegram or Discord bot token to turn that channel on. WhatsApp
-  (QR pairing) and Slack (bot + app token) are set up after install for now;
-  see the README.
+  Fixes the Model field for ids that contain a slash. OpenRouter ids look like
+  nvidia/nemotron-…, Groq's like meta-llama/… — the install wrongly treated the
+  leading segment as the provider, so OpenClaw rejected it as an unknown model /
+  provider. The chosen provider is now always applied unless you already typed
+  it. Same upstream OpenClaw 2026.6.6 image as -1.
 categories: [communication, automation]
 license: MIT
 
