@@ -1,7 +1,7 @@
 # OpenClaw on Suji
 
 Multi-channel messaging bot with AI-powered responses. OpenClaw connects to
-Telegram, Discord, WhatsApp Cloud API, and Slack, and replies to incoming
+Telegram, Discord, WhatsApp, and Slack, and replies to incoming
 messages using your choice of AI provider — Anthropic, OpenAI, Google
 (Gemini), Mistral, Groq, OpenRouter, xAI, Moonshot AI, or any
 OpenAI-compatible endpoint (vLLM, Ollama, LM Studio, LiteLLM, …).
@@ -32,16 +32,18 @@ You'll need:
   …or an **OpenAI-compatible endpoint URL** (vLLM, Ollama, LM Studio,
   LiteLLM, a gateway you run yourself, …). For those, the API key is
   optional — only set it if your endpoint requires authentication.
-- **At least one channel token** for the messaging platforms you want OpenClaw
-  to respond on. You can wire up channels incrementally — start with one and
-  add the rest later by editing the install.
+- **At least one channel** to respond on. **Telegram** and **Discord** are set
+  up right in the install form — paste a bot token and that channel turns on.
+  **WhatsApp** (QR pairing) and **Slack** (bot + app token) are connected after
+  install from the Control UI / terminal (section 4). You can add channels
+  incrementally.
 
-| Channel | Where to get the token |
-|---|---|
-| Telegram | [@BotFather](https://t.me/BotFather) |
-| Discord | [Discord developer portal](https://discord.com/developers/applications) |
-| WhatsApp | Meta Business (Cloud API) |
-| Slack | Your Slack app's config page |
+| Channel | Set up | Where to get the credential |
+|---|---|---|
+| Telegram | install form | [@BotFather](https://t.me/BotFather) |
+| Discord | install form | [Discord developer portal](https://discord.com/developers/applications) |
+| WhatsApp | after install (QR) | scan a QR with your phone — no token |
+| Slack | after install | Slack app config (bot `xoxb-…` + app `xapp-…`) |
 
 ---
 
@@ -57,12 +59,16 @@ In the Suji dashboard:
    | AI provider | yes | One of the providers above, or OpenAI-compatible for a custom endpoint. |
    | Custom endpoint base URL | only for OpenAI-compatible | e.g. `https://llm.example.com/v1`. Leave blank otherwise. |
    | AI API key | for cloud providers | Your key for the chosen provider. Stored encrypted at rest. Optional for OpenAI-compatible endpoints without auth. |
+   | Model | only for OpenAI-compatible / OpenRouter / Moonshot | Model to reply with, e.g. `gpt-5.5` or `claude-sonnet-4-6`. **Leave blank to use a sensible default for your provider.** |
    | Gateway password | no | Auto-generated if you leave it blank. |
-   | Channels | yes | Pick one or more of Telegram / Discord / WhatsApp / Slack. |
-   | Per-channel tokens | only for the channels you select | See the table above. |
+   | Telegram bot token | no | Paste it to enable Telegram; leave blank to skip. |
+   | Discord bot token | no | Paste it to enable Discord; leave blank to skip. |
 
-   The provider key is pre-seeded into the gateway's environment; pick the
-   exact **model** in the Control UI after your first connect (section 3).
+   The chosen provider **and a matching model** are wired into the gateway at
+   install, so the bot replies as soon as it connects. (Picking a provider
+   without a matching model is what used to leave installs mute.) Want a
+   different model later? Change it in the Control UI (section 3) or by editing
+   the install.
 
 3. **Recommended VM size: Small (2 vCPU / 2 GB RAM / 5 GB).** Mini (1 GB) is
    borderline at idle and will OOM under any real load.
@@ -140,22 +146,30 @@ browser/device.
 
 ## 4. Connecting channels
 
-After the Control UI is up:
+**Telegram and Discord** turn on from the install form — paste a bot token and
+OpenClaw's gateway enables that channel the moment it boots. To add or change
+one later, edit the install, paste (or clear) the token, and save; OpenClaw
+redeploys with the new value.
 
-- **Telegram**: paste the bot token from BotFather into the channel form on
-  install. OpenClaw connects to Telegram automatically; talk to your bot to
-  confirm.
-- **Discord**: invite the bot to a server with the right scopes. The OpenClaw
-  Control UI logs incoming events.
-- **WhatsApp**: the Meta Cloud API requires a webhook callback URL. Use
-  `https://<your-subdomain>.suji.fr/webhooks/whatsapp` in the Meta Business
-  console.
-- **Slack**: configure event subscriptions in your Slack app and point them at
-  `https://<your-subdomain>.suji.fr/webhooks/slack`.
+- **Telegram**: paste the [@BotFather](https://t.me/BotFather) token. Message
+  your bot to confirm it replies.
+- **Discord**: paste the bot token, then invite the bot to a server with the
+  right scopes. The Control UI logs incoming events.
 
-To add a channel after the initial install, edit the install in the dashboard,
-toggle the channel on, paste its token, and save — OpenClaw redeploys
-automatically with the new env.
+**WhatsApp and Slack** are connected after install — they don't fit a single
+install-time token (WhatsApp links a phone by QR; Slack needs both a bot and an
+app token). Use the **Terminal** tab (pick the OpenClaw install):
+
+```bash
+# WhatsApp — scan the printed QR with WhatsApp → Linked devices
+openclaw channels login --channel whatsapp
+
+# Slack — needs an xoxb- bot token and an xapp- app token
+openclaw channels add --channel slack --bot-token xoxb-... --app-token xapp-...
+```
+
+Run `openclaw channels --help` for every supported channel and its flags. (A
+first-class install-form experience for WhatsApp and Slack is planned.)
 
 ---
 
