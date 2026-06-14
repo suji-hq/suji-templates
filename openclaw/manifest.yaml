@@ -4,13 +4,16 @@ name: OpenClaw
 description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-2
+version: 2026.6.6-3
 release_notes: >-
-  Fixes the Model field for ids that contain a slash. OpenRouter ids look like
-  nvidia/nemotron-…, Groq's like meta-llama/… — the install wrongly treated the
-  leading segment as the provider, so OpenClaw rejected it as an unknown model /
-  provider. The chosen provider is now always applied unless you already typed
-  it. Same upstream OpenClaw 2026.6.6 image as -1.
+  Config is now seeded only once. Previous versions re-applied the gateway
+  settings and default model on every deploy, which could archive the active
+  chat session on upgrade (the "lost memory" report) — long-term memory was
+  always intact, but the live session reset. The install now writes a setting
+  only when its stored value actually changes, so re-deploys and upgrades keep
+  your running session. Also marks the gateway as the service that receives
+  custom environment variables from the new Variables tab. Same upstream
+  OpenClaw 2026.6.6 image as -2.
 categories: [communication, automation]
 license: MIT
 
@@ -28,6 +31,11 @@ exposure:
 
 network:
   internal_hostname: openclaw
+
+# User-defined env vars from the dashboard Variables tab are injected into
+# this service. OpenClaw's compose has 3 services (init-perms, init-config,
+# openclaw); only the long-running gateway should receive user vars.
+primary_service: openclaw
 
 upgrade_policy: breaking-changes-flagged
 
