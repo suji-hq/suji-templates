@@ -53,9 +53,23 @@ services:
     # environment, never spliced into the script text — no injection surface.
     command:
       - |
-        node dist/index.js config set gateway.mode local
-        node dist/index.js config set gateway.bind lan
-        node dist/index.js config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true
+        # Seed-once guard. OpenClaw persists config in
+        # /home/node/.openclaw/openclaw.json. We only write a setting when its
+        # persisted value differs from the target, so a re-deploy (or an
+        # upgrade that resolves the SAME values) writes nothing — `models set`
+        # is what archives the active session to *.jsonl.reset.<ts>, the cause
+        # of the "lost memory" reset. Reads use the same CLI; an unset key
+        # prints empty, so the first install still seeds everything.
+        set_if_changed() {
+          # $1 = config key, $2 = desired value
+          cur="$$(node dist/index.js config get "$$1" 2>/dev/null || true)"
+          if [ "$$cur" != "$$2" ]; then
+            node dist/index.js config set "$$1" "$$2"
+          fi
+        }
+        set_if_changed gateway.mode local
+        set_if_changed gateway.bind lan
+        set_if_changed gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true
         prov="$$AI_PROVIDER"
         model="$$AI_MODEL"
         full=""
@@ -86,7 +100,18 @@ services:
             xai) full="xai/grok-4.3";;
           esac
         fi
-        [ -n "$$full" ] && node dist/index.js models set "$$full"
+        # Only run `models set` when the persisted primary model differs from the
+        # resolved target. The pinned image's CLI has no `models get`, so we read
+        # the persisted primary directly via `config get agents.defaults.model.primary`
+        # (the same key `models set` writes). An empty/unset value (fresh install)
+        # always differs, so the first install still seeds.
+        if [ -n "$$full" ]; then
+          curmodel="$$(node dist/index.js config get agents.defaults.model.primary 2>/dev/null || true)"
+          case "$$curmodel" in
+            *"$$full"*) : ;;                        # already set — skip the reset-triggering write
+            *) node dist/index.js models set "$$full";;
+          esac
+        fi
         exit 0
     environment:
       HOME: "/home/node"
