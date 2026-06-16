@@ -4,16 +4,14 @@ name: OpenClaw
 description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-3
+version: 2026.6.6-4
 release_notes: >-
-  Config is now seeded only once. Previous versions re-applied the gateway
-  settings and default model on every deploy, which could archive the active
-  chat session on upgrade (the "lost memory" report) — long-term memory was
-  always intact, but the live session reset. The install now writes a setting
-  only when its stored value actually changes, so re-deploys and upgrades keep
-  your running session. Also marks the gateway as the service that receives
-  custom environment variables from the new Variables tab. Same upstream
-  OpenClaw 2026.6.6 image as -2.
+  The Model field now suggests the provider's available models. After you run
+  "Test connection" on the AI API key, the Model field becomes a searchable
+  dropdown populated from the provider's own model list — pick one instead of
+  typing it from memory. You can still type any custom value (e.g. for
+  vLLM/Ollama or an unlisted model) or leave it blank for a sensible default.
+  Same upstream OpenClaw 2026.6.6 image as -3.
 categories: [communication, automation]
 license: MIT
 
@@ -84,11 +82,16 @@ form_schema:
     label: Model
     description: >-
       The model OpenClaw replies with, e.g. gpt-5.5, claude-sonnet-4-6, or
-      gemini-3.1-pro-preview. Leave blank to use a sensible default for the
+      gemini-3.1-pro-preview. Run "Test connection" above to list the provider's
+      models, or type any value. Leave blank to use a sensible default for the
       chosen provider. Required for OpenAI-compatible, OpenRouter, and Moonshot
       (no default is possible). You can change it later in the Control UI.
     default: ""
     required_if: { key: AI_PROVIDER, in: [openai-compatible, openrouter, moonshot] }
+    # Populate suggestions from the AI_API_KEY connection test's model list.
+    dynamic_options:
+      kind: ai_models
+      source_key: AI_API_KEY
 
   - key: OPENCLAW_GATEWAY_PASSWORD
     type: secret
