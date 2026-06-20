@@ -30,7 +30,7 @@ services:
           cpus: "1.0"
 
   plausible:
-    image: ghcr.io/plausible/community-edition:v2.1.5
+    image: ghcr.io/plausible/community-edition:v3.2.1
     restart: unless-stopped
     # The `sleep 15` is required: plausible's entrypoint runs `db createdb`
     # immediately, but depends_on does not wait for the DBs to accept
@@ -40,7 +40,7 @@ services:
       - plausible_db
       - plausible_events_db
     environment:
-      BASE_URL: ${BASE_URL}
+      BASE_URL: ${SUJI_PUBLIC_URL}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE}
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@plausible_db:5432/plausible_db
       CLICKHOUSE_DATABASE_URL: http://plausible_events_db:8123/plausible_events_db

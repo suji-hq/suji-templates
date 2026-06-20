@@ -527,7 +527,12 @@ def render_for_boot(manifest: dict, compose_text: str):
             env[k] = str((opts[0] or {}).get("value", "x"))
         elif t == "number":
             env[k] = "1"
-        else:  # text / secret
+        elif t == "secret":
+            # Secrets frequently enforce a minimum length (e.g. Plausible's
+            # SECRET_KEY_BASE >= 32 bytes). Pad the dummy to 64 chars so a
+            # length check passes in the boot test; prod uses the real secret.
+            env[k] = f"citest-{(k or 'v').lower()}".ljust(64, "x")
+        else:  # text
             env[k] = f"citest-{(k or 'v').lower()}"
     # Platform-provided substitution vars. Production fills these for every
     # *exposed* install (provisioner-v2), so an auto-wired value such as
