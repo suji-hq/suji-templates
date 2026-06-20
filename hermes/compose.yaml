@@ -1,0 +1,48 @@
+services:
+  hermes:
+    image: docker.io/nousresearch/hermes-agent:v2026.6.19
+    restart: unless-stopped
+    # The image's entrypoint is the hermes binary; `gateway run` starts the
+    # long-running agent gateway + dashboard (matches upstream's documented
+    # `nousresearch/hermes-agent gateway run`).
+    command: ["gateway", "run"]
+    environment:
+      # Web dashboard ON, bound to all interfaces so the Cloudflare tunnel can
+      # reach it. The dashboard can approve arbitrary shell commands, so Basic
+      # Auth below is mandatory — never expose 9119 unauthenticated.
+      HERMES_DASHBOARD: "1"
+      HERMES_DASHBOARD_HOST: "0.0.0.0"
+      HERMES_DASHBOARD_PORT: "9119"
+      # All substituted values are double-quoted so the two unselected provider
+      # keys (which render empty) become the YAML string "" rather than bare
+      # empty, which YAML parses as null and the compose validator rejects.
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: "${DASHBOARD_USERNAME}"
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: "${DASHBOARD_PASSWORD}"
+      # Stable signing key so sessions survive restarts (empty would mint a
+      # random per-process key and log everyone out on every redeploy).
+      HERMES_DASHBOARD_BASIC_AUTH_SECRET: "${DASHBOARD_SECRET}"
+      # The OpenAI-compatible API server (port 8642) stays off — only the
+      # authenticated dashboard is exposed.
+      API_SERVER_ENABLED: "false"
+      # Provider is auto-detected from whichever key is non-empty. The install
+      # form's show_if ensures exactly one is filled; the rest render as "".
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
+    ports:
+      - "9119"
+    volumes:
+      # Hermes persists config, the .env, sessions, memories, self-written
+      # skills, logs, and credentials under /opt/data.
+      - hermes-data:/opt/data
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 4096M
+          cpus: "2.0"
+volumes:
+  hermes-data:
+networks:
+  suji-net:
+    external: true

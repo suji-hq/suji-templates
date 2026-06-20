@@ -1,0 +1,57 @@
+slug: vaultwarden
+
+name: Vaultwarden
+description: Lightweight, self-hosted password manager — fully compatible with the official Bitwarden clients (browser, desktop, mobile, CLI).
+homepage_url: https://github.com/dani-garcia/vaultwarden
+icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/vaultwarden/icon.svg
+version: 1.36.0
+release_notes: >-
+  Initial Vaultwarden template. Bitwarden-compatible vault server with the
+  public URL auto-wired for WebAuthn/2FA and attachments, optional admin panel,
+  and a sign-up toggle so you can lock the instance down after creating your
+  account.
+categories: [security, productivity]
+license: AGPL-3.0
+
+resources:
+  min_memory_mib: 512
+  recommended_memory_mib: 1024
+  min_cpu_millicores: 250
+  recommended_storage_gib: 5
+
+exposure:
+  exposable: true
+  default: on
+  port: 80
+  subdomain_hint: vault
+
+network:
+  internal_hostname: vaultwarden
+
+upgrade_policy: manual
+
+registry:
+  - docker.io
+
+form_schema:
+  - key: SIGNUPS_ALLOWED
+    type: select
+    label: Allow new sign-ups
+    description: >-
+      Leave on to create your first account, then set this to "No" (Edit Install
+      → redeploy) so nobody else can register on your vault. Existing accounts
+      keep working either way.
+    default: "true"
+    options:
+      - { value: "true", label: "Yes — anyone with the URL can register" }
+      - { value: "false", label: "No — registration closed" }
+
+  - key: ADMIN_TOKEN
+    type: secret
+    label: Admin panel token
+    description: >-
+      Optional. Set a strong secret to enable the /admin diagnostics panel
+      (manage users, see settings). Leave blank to keep the admin panel fully
+      disabled — the recommended default. You'll log in to /admin with this
+      exact value.
+    default: ""
