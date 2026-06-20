@@ -1,0 +1,108 @@
+slug: hermes
+
+name: Hermes Agent
+description: Nous Research's open-source autonomous AI agent — persistent memory, scheduled tasks, and self-written skills. Bring your own model key; runs entirely on your instance.
+homepage_url: https://github.com/NousResearch/hermes-agent
+icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/hermes/icon.svg
+version: v2026.6.19-1
+release_notes: >-
+  Initial Hermes Agent template. Ships the web dashboard behind mandatory HTTP
+  Basic Auth (the workspace can approve shell commands, so it must never be
+  open), with a bring-your-own-key model picker for Anthropic, OpenAI, or
+  OpenRouter. Upstream image v2026.6.19 (v0.17.0).
+categories: [agents, automation]
+license: Apache-2.0
+
+resources:
+  min_memory_mib: 4096
+  recommended_memory_mib: 4096
+  min_cpu_millicores: 1000
+  recommended_storage_gib: 10
+
+exposure:
+  exposable: true
+  default: on
+  port: 9119
+  subdomain_hint: hermes
+
+network:
+  internal_hostname: hermes
+
+# User-defined env vars from the dashboard Variables tab are injected into the
+# long-running gateway service.
+primary_service: hermes
+
+upgrade_policy: breaking-changes-flagged
+
+registry:
+  - docker.io
+
+form_schema:
+  - key: LLM_PROVIDER
+    type: select
+    label: Model provider
+    description: >-
+      Which LLM service Hermes uses for reasoning. Hermes auto-detects the
+      provider from whichever key you supply below. Use OpenRouter to reach many
+      models with a single key.
+    required: true
+    default: anthropic
+    options:
+      - { value: anthropic, label: Anthropic (Claude) }
+      - { value: openai, label: OpenAI (GPT) }
+      - { value: openrouter, label: OpenRouter (many models) }
+
+  - key: ANTHROPIC_API_KEY
+    type: secret
+    label: Anthropic API key
+    description: Your Anthropic API key (from console.anthropic.com).
+    default: ""
+    show_if: { key: LLM_PROVIDER, in: [anthropic] }
+    required_if: { key: LLM_PROVIDER, in: [anthropic] }
+    connection_test:
+      kind: ai_provider
+      provider_key: LLM_PROVIDER
+
+  - key: OPENAI_API_KEY
+    type: secret
+    label: OpenAI API key
+    description: Your OpenAI API key (from platform.openai.com).
+    default: ""
+    show_if: { key: LLM_PROVIDER, in: [openai] }
+    required_if: { key: LLM_PROVIDER, in: [openai] }
+    connection_test:
+      kind: ai_provider
+      provider_key: LLM_PROVIDER
+
+  - key: OPENROUTER_API_KEY
+    type: secret
+    label: OpenRouter API key
+    description: Your OpenRouter API key (from openrouter.ai/keys).
+    default: ""
+    show_if: { key: LLM_PROVIDER, in: [openrouter] }
+    required_if: { key: LLM_PROVIDER, in: [openrouter] }
+    connection_test:
+      kind: ai_provider
+      provider_key: LLM_PROVIDER
+
+  - key: DASHBOARD_USERNAME
+    type: text
+    label: Dashboard username
+    description: >-
+      Username for the dashboard login. The workspace can approve shell
+      commands, so it is always protected by HTTP Basic Auth — it is never
+      exposed without a login.
+    required: true
+    default: admin
+
+  - key: DASHBOARD_PASSWORD
+    type: secret
+    label: Dashboard password
+    description: Password for the dashboard login. Choose a strong one.
+    required: true
+
+  - key: DASHBOARD_SECRET
+    type: secret
+    label: Session signing secret
+    description: Auto-generated if blank — keeps you logged in across restarts.
+    auto_generate: true

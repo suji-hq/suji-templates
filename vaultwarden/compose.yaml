@@ -1,0 +1,37 @@
+services:
+  vaultwarden:
+    image: docker.io/vaultwarden/server:1.36.0
+    restart: unless-stopped
+    environment:
+      # The full public URL is required for WebAuthn / two-step login,
+      # attachments, and the admin panel. ${SUJI_PUBLIC_URL} is filled in at
+      # deploy time with this install's https://<subdomain>.suji.fr — no need
+      # to ask the user for it.
+      # All values are double-quoted so an empty substitution (e.g. a blank
+      # ADMIN_TOKEN, or SUJI_PUBLIC_URL on a non-exposed install) renders as the
+      # YAML string "" instead of bare empty, which YAML would parse as null and
+      # the platform's compose validator rejects.
+      DOMAIN: "${SUJI_PUBLIC_URL}"
+      # "true" until the owner has registered, then flip to "false" to close
+      # registration. Read as a string boolean by Vaultwarden.
+      SIGNUPS_ALLOWED: "${SIGNUPS_ALLOWED}"
+      # Blank (the default) disables the /admin panel entirely — the safe
+      # default. A non-empty value enables it and is the login token.
+      ADMIN_TOKEN: "${ADMIN_TOKEN}"
+    ports:
+      - "80"
+    volumes:
+      # Vaultwarden persists the SQLite db, attachments, RSA keys, and config
+      # under /data. Losing this volume loses every vault.
+      - vaultwarden-data:/data
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+volumes:
+  vaultwarden-data:
+networks:
+  suji-net:
+    external: true
