@@ -4,6 +4,17 @@ services:
     restart: unless-stopped
     environment:
       DB_TYPE: ${DB_TYPE}
+      # SQLite (default) needs an explicit file path on the persistent
+      # volume — without it Wiki.js has nowhere to create the database and
+      # fails to start.
+      DB_FILEPATH: /wiki/data/wiki.sqlite
+      # External DB (PostgreSQL / MySQL). Unused when DB_TYPE=sqlite, in
+      # which case these resolve to their blank form defaults and are ignored.
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME}
     ports:
       - "3000"
     volumes:

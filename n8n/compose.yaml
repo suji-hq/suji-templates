@@ -3,9 +3,6 @@ services:
     image: docker.io/n8nio/n8n:2.22.2
     restart: unless-stopped
     environment:
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
     ports:
       - "5678"
