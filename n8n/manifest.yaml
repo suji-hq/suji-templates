@@ -4,12 +4,12 @@ name: n8n
 description: Workflow automation platform with hundreds of integrations (Zapier alternative).
 homepage_url: https://n8n.io
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/n8n/icon.svg
-version: 2.22.2-1
+version: 2.27.3-1
 release_notes: >-
-  Auto-fill the timezone from the browser (expanded the selectable zone
-  list), and remove the dead N8N_BASIC_AUTH fields — n8n 2.x uses an
-  interactive first-run owner setup, so those env vars were ignored. The n8n
-  app image is unchanged (2.22.2).
+  Update n8n to 2.27.3 (from 2.22.2). No template changes — the install form,
+  timezone auto-fill, and owner-setup flow are unchanged. Existing installs can
+  upgrade in place; n8n runs its own DB migrations on first boot of the new
+  version.
 categories: [automation, productivity]
 license: Apache-2.0
 

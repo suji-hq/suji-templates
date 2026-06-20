@@ -4,11 +4,11 @@ name: Wiki.js
 description: Modern, lightweight, powerful wiki built on Node.js, Git, and Markdown.
 homepage_url: https://wiki.js.org
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/wikijs/icon.svg
-version: 2.5.307-1
+version: 2.5.314-1
 release_notes: >-
-  Fix the default SQLite install (DB_FILEPATH was missing, so it never came
-  up) and add the option to use an external PostgreSQL or MySQL database. App
-  image unchanged (2.5.307).
+  Update Wiki.js to 2.5.314 (from 2.5.307). No template changes — the SQLite
+  default (with DB_FILEPATH) and the external PostgreSQL/MySQL option are
+  unchanged. Existing installs can upgrade in place.
 categories: [productivity, cms]
 license: AGPL-3.0
 
