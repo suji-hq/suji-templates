@@ -4,12 +4,14 @@ name: Plausible Analytics
 description: Privacy-friendly, lightweight web analytics — GDPR-compliant Google Analytics alternative.
 homepage_url: https://plausible.io
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/plausible/icon.svg
-version: v2.1.5-1
+version: v3.2.1-1
 release_notes: >-
-  Bundle the required PostgreSQL and ClickHouse databases — the previous
-  single-container build could not start. SECRET_KEY_BASE is now a required
-  user-provided value (Plausible needs >=64 chars; generate with
-  `openssl rand -base64 64`). Verified booting + migrating on a tenant VM.
+  Update Plausible to v3.2.1 (major, from v2.1.5). No template changes — the
+  bundled PostgreSQL + ClickHouse compose is unchanged. The app runs its v3 data
+  migrations on first boot (verified locally: createdb + migrate complete, serves
+  on 8000). upgrade_policy stays manual, so existing installs upgrade only when
+  you choose. SECRET_KEY_BASE is still a required user-provided value (>=64
+  chars; generate with `openssl rand -base64 64`).
 categories: [analytics]
 license: AGPL-3.0
 
