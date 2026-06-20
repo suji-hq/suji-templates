@@ -1,6 +1,6 @@
 services:
   wikijs:
-    image: docker.io/requarks/wiki:2.5.307
+    image: docker.io/requarks/wiki:2.5.314
     restart: unless-stopped
     environment:
       DB_TYPE: ${DB_TYPE}
