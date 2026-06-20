@@ -4,7 +4,12 @@ name: NocoDB
 description: Open-source Airtable alternative — turns any database into a smart spreadsheet UI.
 homepage_url: https://nocodb.com
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/nocodb/icon.svg
-version: 0.252.0
+version: 2026.06.1
+release_notes: >-
+  Update NocoDB to 2026.06.1 (from 0.252.0; the project moved to date-based
+  versioning). The public URL is now auto-wired via NC_PUBLIC_URL from the
+  install's assigned subdomain, so the newer origin/redirect handling accepts
+  the per-install address in the browser. upgrade_policy stays manual.
 categories: [database, productivity]
 license: AGPL-3.0
 
