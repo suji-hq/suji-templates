@@ -1,18 +1,15 @@
 slug: openclaw
 
 name: OpenClaw
-description: Multi-channel messaging bot with AI-powered responses (Telegram, Discord, WhatsApp, Slack).
+description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack — bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-4
+version: 2026.6.6-5
 release_notes: >-
-  The Model field now suggests the provider's available models. After you run
-  "Test connection" on the AI API key, the Model field becomes a searchable
-  dropdown populated from the provider's own model list — pick one instead of
-  typing it from memory. You can still type any custom value (e.g. for
-  vLLM/Ollama or an unlisted model) or leave it blank for a sensible default.
-  Same upstream OpenClaw 2026.6.6 image as -3.
-categories: [communication, automation]
+  Repositioned in the catalogue as a self-hosted AI agent and added the new
+  Agents category. Configuration and behaviour are unchanged — same upstream
+  OpenClaw 2026.6.6 image as -4.
+categories: [agents, communication, automation]
 license: MIT
 
 resources:
