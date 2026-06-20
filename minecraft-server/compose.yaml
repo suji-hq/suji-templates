@@ -1,6 +1,6 @@
 services:
   crafty:
-    image: docker.io/arcadiatechnology/crafty-4:4.10.4
+    image: docker.io/arcadiatechnology/crafty-4:4.10.7
     restart: unless-stopped
     environment:
       TZ: Etc/UTC

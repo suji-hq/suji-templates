@@ -571,17 +571,29 @@ def boot_test(app: str, manifest: dict, compose_text: str, report: Report):
             report.boot = {"ok": False, "stage": "up"}
             return
         code = None
+
+        def _usable(c):
+            return bool(c) and (c[0] in "23" or c == "401")
+
+        def _probe(scheme):
+            r = subprocess.run(
+                ["curl", "-s", "-k", "-o", "/dev/null", "-w", "%{http_code}",
+                 "--max-time", "3", f"{scheme}://localhost:{port}/"],
+                capture_output=True, text=True)
+            return r.stdout.strip()
+
         if port is not None:
             for _ in range(90):
-                r = subprocess.run(
-                    ["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
-                     "--max-time", "3", f"http://localhost:{port}/"],
-                    capture_output=True, text=True)
-                code = r.stdout.strip()
-                if code and code[0] in "23" or code == "401":
+                # Try HTTP first; fall back to HTTPS for apps that terminate TLS
+                # on the exposed port (e.g. Crafty's panel on 8443). Without the
+                # HTTPS probe an HTTPS-only app reads as a dead "000" boot.
+                code = _probe("http")
+                if not _usable(code):
+                    code = _probe("https")
+                if _usable(code):
                     break
                 time.sleep(1)
-            ok = bool(code) and (code[0] in "23" or code == "401")
+            ok = _usable(code)
             report.boot = {"ok": ok, "http_code": code, "port": port}
             if not ok:
                 logs = subprocess.run(compose_cmd("logs", "--tail", "30"),
