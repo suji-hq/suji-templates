@@ -4,18 +4,20 @@ name: Hermes Agent
 description: Nous Research's open-source autonomous AI agent — persistent memory, scheduled tasks, and self-written skills. Bring your own model key; runs entirely on your instance.
 homepage_url: https://github.com/NousResearch/hermes-agent
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/hermes/icon.svg
-version: v2026.6.19-1
+version: v2026.6.19-2
 release_notes: >-
-  Initial Hermes Agent template. Ships the web dashboard behind mandatory HTTP
-  Basic Auth (the workspace can approve shell commands, so it must never be
-  open), with a bring-your-own-key model picker for Anthropic, OpenAI, or
-  OpenRouter. Upstream image v2026.6.19 (v0.17.0).
+  Raise the minimum VM to Medium (8 GB). Hermes bundles Chromium for browser
+  automation and runs with a 4 GB container limit, so a 4 GB VM has no headroom
+  for the OS and gets OOM-killed under load — Medium is the realistic floor.
+  Dashboard auth is a mandatory sign-in (username + password); the workspace can
+  approve shell commands, so it is never exposed without a login. Same upstream
+  image v2026.6.19 (v0.17.0) as -1.
 categories: [agents, automation]
 license: Apache-2.0
 
 resources:
-  min_memory_mib: 4096
-  recommended_memory_mib: 4096
+  min_memory_mib: 8192
+  recommended_memory_mib: 8192
   min_cpu_millicores: 1000
   recommended_storage_gib: 10
 
