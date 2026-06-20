@@ -4,7 +4,11 @@ name: Validate templates
 # breaking-change analysis the platform's strict validator would imply — lint
 # the contract, diff the form/exposure contract against the base branch (so a
 # renamed form key or moved exposure port is caught), diff the image contract,
-# and boot the app. A BREAKING verdict fails the check.
+# and boot the app. A BREAKING verdict fails the check — unless the PR
+# title/body or merge-commit message carries the literal marker
+# `[breaking-approved]`, which downgrades existing-install contract breaks
+# (form became required / changed type / moved exposure port) to warnings.
+# Malformed-template lint and boot failures always fail, marker or not.
 
 on:
   pull_request:
@@ -62,6 +66,12 @@ jobs:
         env:
           APPS: ${{ steps.changed.outputs.apps }}
           BASE: ${{ steps.changed.outputs.base }}
+          # Marker sources for the deliberate breaking-change override. These
+          # flow through env (never interpolated into the script) so a hostile
+          # title/body/message can't inject commands.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_COMMIT_MSG: ${{ github.event.head_commit.message }}
           # Optional LLM breaking-change pass (skipped gracefully when unset; not
           # available on fork PRs, where secrets aren't exposed).
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -69,6 +79,18 @@ jobs:
           set -e
           rc=0
           : > /tmp/pr-report.md
+          # Deliberate override: a maintainer who has reviewed the breaking
+          # analysis can add the literal marker `[breaking-approved]` to the PR
+          # title/body or the merge-commit message to waive ONLY the
+          # existing-install contract-diff breaks (a newly-required field, a
+          # changed field type, a moved exposure port). Malformed-template lint
+          # errors and boot failures still fail the check.
+          ALLOW=""
+          if printf '%s\n%s\n%s' "$PR_TITLE" "$PR_BODY" "$HEAD_COMMIT_MSG" \
+              | grep -qF '[breaking-approved]'; then
+            echo "::warning::[breaking-approved] found — existing-install contract breaks will be downgraded to warnings for this run."
+            ALLOW="--allow-contract-break"
+          fi
           # $APPS is a plain env value — `for` word-splits it but does NOT
           # re-evaluate command substitution, so this is injection-safe.
           for app in $APPS; do
@@ -78,7 +100,7 @@ jobs:
             echo "::group::analyze $app"
             CI_REPORT_PATH="/tmp/report-$app.md" \
               python3 scripts/marketplace_ci.py analyze "$app" \
-                --from-worktree --base "$BASE" --fail-on-breaking || rc=1
+                --from-worktree --base "$BASE" --fail-on-breaking $ALLOW || rc=1
             cat "/tmp/report-$app.md" >> /tmp/pr-report.md 2>/dev/null || true
             echo "" >> /tmp/pr-report.md
             echo "::endgroup::"

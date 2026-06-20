@@ -195,6 +195,9 @@ FORM_KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 VAR_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
 # Names the platform injects at deploy time (only when exposed) — not form keys.
 PLATFORM_VARS = {"SUJI_PUBLIC_HOST", "SUJI_PUBLIC_URL", "SUJI_PUBLIC_PROTOCOL"}
+# Error findings that describe a change breaking EXISTING installs (vs a
+# malformed template). `--allow-contract-break` downgrades only these.
+CONTRACT_BREAK_CODES = {"form.required", "form.type", "exposure.port.changed"}
 
 
 def app_dir(app: str) -> Path:
@@ -971,6 +974,18 @@ def cmd_analyze(args):
         except Exception as e:
             report.add("warn", "boot.skip", f"boot test skipped: {e}")
 
+    # `--allow-contract-break`: a maintainer has reviewed and approved the
+    # contract changes against existing installs (e.g. a newly-required field
+    # on an app with no installs). Downgrade ONLY those existing-install
+    # contract-diff findings to warnings so the verdict isn't BREAKING.
+    # Malformed-template lint (bad image tag, unbound compose var, …) and boot
+    # failures keep their "error" level and still fail loudly.
+    if getattr(args, "allow_contract_break", False):
+        for f in report.findings:
+            if f.level == "error" and f.code in CONTRACT_BREAK_CODES:
+                f.level = "warn"
+                f.message += "  [approved via [breaking-approved]]"
+
     _finish(report)
     # Non-zero exit on BREAKING so a PR check fails loudly.
     return 1 if (args.fail_on_breaking and report.verdict == "BREAKING") else 0
@@ -1021,6 +1036,10 @@ def main():
                    help="skip the code-signal diff + OpenRouter LLM breaking-change pass")
     a.add_argument("--fail-on-breaking", action="store_true",
                    help="exit non-zero when the verdict is BREAKING")
+    a.add_argument("--allow-contract-break", action="store_true",
+                   help="downgrade existing-install contract-diff breaks "
+                        "(form.required / form.type / exposure.port.changed) to "
+                        "warnings; malformed-template lint and boot failures still fail")
     a.set_defaults(func=cmd_analyze)
 
     b = sub.add_parser("bump", help="rewrite an app's image tags + manifest version")
