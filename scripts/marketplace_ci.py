@@ -529,6 +529,17 @@ def render_for_boot(manifest: dict, compose_text: str):
             env[k] = "1"
         else:  # text / secret
             env[k] = f"citest-{(k or 'v').lower()}"
+    # Platform-provided substitution vars. Production fills these for every
+    # *exposed* install (provisioner-v2), so an auto-wired value such as
+    # `DOMAIN: ${SUJI_PUBLIC_URL}` resolves to a real https URL there. Mirror
+    # that here with valid placeholders so the boot test doesn't render them
+    # empty — an empty DOMAIN/url makes strict apps (e.g. Vaultwarden) refuse
+    # to start. setdefault so a same-named form field (rare) still wins.
+    if (manifest.get("exposure") or {}).get("exposable"):
+        host = f"{manifest.get('slug', 'app')}-citest.suji.fr"
+        env.setdefault("SUJI_PUBLIC_HOST", host)
+        env.setdefault("SUJI_PUBLIC_URL", f"https://{host}")
+        env.setdefault("SUJI_PUBLIC_PROTOCOL", "https")
     port = (manifest.get("exposure") or {}).get("port")
     rendered = compose_text
     if port is not None:
