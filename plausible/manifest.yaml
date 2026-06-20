@@ -4,14 +4,20 @@ name: Plausible Analytics
 description: Privacy-friendly, lightweight web analytics — GDPR-compliant Google Analytics alternative.
 homepage_url: https://plausible.io
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/plausible/icon.svg
-version: 2.1.5
+version: v2.1.5-1
+release_notes: >-
+  Bundle the required PostgreSQL and ClickHouse databases — the previous
+  single-container build could not start. SECRET_KEY_BASE is now a required
+  user-provided value (Plausible needs >=64 chars; generate with
+  `openssl rand -base64 64`). Verified booting + migrating on a tenant VM.
 categories: [analytics]
 license: AGPL-3.0
 
 resources:
-  min_memory_mib: 1024
-  recommended_memory_mib: 2048
-  min_cpu_millicores: 500
+  # Three services: app (~1 GiB) + Postgres (~0.5 GiB) + ClickHouse (~1 GiB).
+  min_memory_mib: 3072
+  recommended_memory_mib: 4096
+  min_cpu_millicores: 1000
   recommended_storage_gib: 10
 
 exposure:
@@ -33,11 +39,19 @@ form_schema:
   - key: BASE_URL
     type: text
     label: Site URL
-    description: The full URL Plausible will be served at.
+    description: The full public URL Plausible will be served at (your suji.fr subdomain).
     required: true
 
   - key: SECRET_KEY_BASE
     type: secret
     label: Secret key base
-    description: Auto-generated; min 64 chars.
+    description: >-
+      A random secret of at least 64 characters. Generate one with:
+      openssl rand -base64 64
+    required: true
+
+  - key: POSTGRES_PASSWORD
+    type: secret
+    label: Database password
+    description: Password for the bundled PostgreSQL. Auto-generated if blank.
     auto_generate: true

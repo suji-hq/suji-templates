@@ -1,22 +1,61 @@
 services:
-  plausible:
-    image: ghcr.io/plausible/community-edition:v2.1.5
+  plausible_db:
+    image: docker.io/postgres:16-alpine
     restart: unless-stopped
     environment:
-      BASE_URL: ${BASE_URL}
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
-    ports:
-      - "8000"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: plausible_db
     volumes:
-      - plausible-data:/data
+      - plausible-db-data:/var/lib/postgresql/data
     networks: [suji-net]
     deploy:
       resources:
         limits:
-          memory: 2048M
+          memory: 512M
+          cpus: "0.5"
+
+  plausible_events_db:
+    image: docker.io/clickhouse/clickhouse-server:24.3-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    volumes:
+      - plausible-events-data:/var/lib/clickhouse
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
           cpus: "1.0"
+
+  plausible:
+    image: ghcr.io/plausible/community-edition:v2.1.5
+    restart: unless-stopped
+    # The `sleep 15` is required: plausible's entrypoint runs `db createdb`
+    # immediately, but depends_on does not wait for the DBs to accept
+    # connections — give them a moment first.
+    command: sh -c "sleep 15 && /entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    depends_on:
+      - plausible_db
+      - plausible_events_db
+    environment:
+      BASE_URL: ${BASE_URL}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@plausible_db:5432/plausible_db
+      CLICKHOUSE_DATABASE_URL: http://plausible_events_db:8123/plausible_events_db
+    ports:
+      - "8000"
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: "1.0"
+
 volumes:
-  plausible-data:
+  plausible-db-data:
+  plausible-events-data:
 networks:
   suji-net:
     external: true

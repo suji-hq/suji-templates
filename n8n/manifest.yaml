@@ -4,8 +4,12 @@ name: n8n
 description: Workflow automation platform with hundreds of integrations (Zapier alternative).
 homepage_url: https://n8n.io
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/n8n/icon.svg
-version: 2.22.2
-release_notes: First community release.
+version: 2.22.2-1
+release_notes: >-
+  Auto-fill the timezone from the browser (expanded the selectable zone
+  list), and remove the dead N8N_BASIC_AUTH fields — n8n 2.x uses an
+  interactive first-run owner setup, so those env vars were ignored. The n8n
+  app image is unchanged (2.22.2).
 categories: [automation, productivity]
 license: Apache-2.0
 
@@ -30,26 +34,59 @@ registry:
   - docker.io
 
 form_schema:
-  - key: N8N_BASIC_AUTH_USER
-    type: text
-    label: Admin username
-    description: The username for n8n's basic auth login.
-    required: true
-    default: admin
-
-  - key: N8N_BASIC_AUTH_PASSWORD
-    type: secret
-    label: Admin password
-    required: true
-
   - key: GENERIC_TIMEZONE
     type: select
     label: Timezone
     default: UTC
+    description: Auto-filled from your browser when your zone is in the list.
     options:
       - { value: UTC, label: UTC }
-      - { value: Europe/Paris, label: Europe/Paris }
-      - { value: Europe/London, label: Europe/London }
-      - { value: America/New_York, label: America/New_York }
+      - { value: Pacific/Honolulu, label: Pacific/Honolulu }
+      - { value: America/Anchorage, label: America/Anchorage }
       - { value: America/Los_Angeles, label: America/Los_Angeles }
+      - { value: America/Denver, label: America/Denver }
+      - { value: America/Chicago, label: America/Chicago }
+      - { value: America/New_York, label: America/New_York }
+      - { value: America/Mexico_City, label: America/Mexico_City }
+      - { value: America/Bogota, label: America/Bogota }
+      - { value: America/Santiago, label: America/Santiago }
+      - { value: America/Sao_Paulo, label: America/Sao_Paulo }
+      - { value: America/Argentina/Buenos_Aires, label: America/Argentina/Buenos_Aires }
+      - { value: Europe/London, label: Europe/London }
+      - { value: Europe/Lisbon, label: Europe/Lisbon }
+      - { value: Europe/Madrid, label: Europe/Madrid }
+      - { value: Europe/Paris, label: Europe/Paris }
+      - { value: Europe/Berlin, label: Europe/Berlin }
+      - { value: Europe/Amsterdam, label: Europe/Amsterdam }
+      - { value: Europe/Rome, label: Europe/Rome }
+      - { value: Europe/Zurich, label: Europe/Zurich }
+      - { value: Europe/Warsaw, label: Europe/Warsaw }
+      - { value: Europe/Stockholm, label: Europe/Stockholm }
+      - { value: Europe/Athens, label: Europe/Athens }
+      - { value: Europe/Bucharest, label: Europe/Bucharest }
+      - { value: Europe/Kyiv, label: Europe/Kyiv }
+      - { value: Europe/Istanbul, label: Europe/Istanbul }
+      - { value: Europe/Moscow, label: Europe/Moscow }
+      - { value: Africa/Casablanca, label: Africa/Casablanca }
+      - { value: Africa/Lagos, label: Africa/Lagos }
+      - { value: Africa/Cairo, label: Africa/Cairo }
+      - { value: Africa/Johannesburg, label: Africa/Johannesburg }
+      - { value: Africa/Nairobi, label: Africa/Nairobi }
+      - { value: Asia/Jerusalem, label: Asia/Jerusalem }
+      - { value: Asia/Riyadh, label: Asia/Riyadh }
+      - { value: Asia/Dubai, label: Asia/Dubai }
+      - { value: Asia/Tehran, label: Asia/Tehran }
+      - { value: Asia/Karachi, label: Asia/Karachi }
+      - { value: Asia/Kolkata, label: Asia/Kolkata }
+      - { value: Asia/Dhaka, label: Asia/Dhaka }
+      - { value: Asia/Bangkok, label: Asia/Bangkok }
+      - { value: Asia/Jakarta, label: Asia/Jakarta }
+      - { value: Asia/Shanghai, label: Asia/Shanghai }
+      - { value: Asia/Hong_Kong, label: Asia/Hong_Kong }
+      - { value: Asia/Singapore, label: Asia/Singapore }
       - { value: Asia/Tokyo, label: Asia/Tokyo }
+      - { value: Asia/Seoul, label: Asia/Seoul }
+      - { value: Australia/Perth, label: Australia/Perth }
+      - { value: Australia/Adelaide, label: Australia/Adelaide }
+      - { value: Australia/Sydney, label: Australia/Sydney }
+      - { value: Pacific/Auckland, label: Pacific/Auckland }
