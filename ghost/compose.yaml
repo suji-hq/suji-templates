@@ -3,7 +3,7 @@ services:
     image: docker.io/ghost:6.45.0
     restart: unless-stopped
     environment:
-      url: ${URL}
+      url: ${SUJI_PUBLIC_URL}
       database__client: sqlite3
       database__connection__filename: /var/lib/ghost/content/data/ghost.db
     ports:
