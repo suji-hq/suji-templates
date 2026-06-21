@@ -6,11 +6,12 @@ homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
 version: 2026.6.6-6
 release_notes: >-
-  Install-form clarity fixes (same upstream OpenClaw 2026.6.6 image as -5). The
-  connection test now validates your chosen model directly, so OpenAI-compatible
-  endpoints without a /models list work. The gateway secret is now labelled
-  "Gateway access token" and its help text points to where you copy it after
-  setup (Variables tab) — it is the token the gateway login screen asks for.
+  Install-form and first-run clarity (same upstream OpenClaw 2026.6.6 image as
+  -5). The connection test now validates your chosen model directly, so
+  OpenAI-compatible endpoints without a /models list work. The gateway secret is
+  now labelled "Gateway access token" (it is the token the gateway login screen
+  asks for), and a new Getting started guide on the install's Deployment tab
+  reveals that token and walks you through first login.
 categories: [agents, communication, automation]
 license: MIT
 
@@ -33,6 +34,30 @@ network:
 # this service. OpenClaw's compose has 3 services (init-perms, init-config,
 # openclaw); only the long-running gateway should receive user vars.
 primary_service: openclaw
+
+# Post-install "Getting started" steps, shown on the install's Deployment tab.
+# reveal_key surfaces the gateway token right where the user needs it, so they
+# never have to hunt for it in the Variables tab.
+guide:
+  - title: Open OpenClaw
+    body: >-
+      Use the Open button above to load the gateway. Its login screen asks for a
+      gateway access token.
+  - title: Unlock the gateway
+    body: >-
+      Reveal your access token below and paste it into the OpenClaw login screen.
+      It is the same value any time you need it again.
+    reveal_key: OPENCLAW_GATEWAY_PASSWORD
+  - title: Pair this browser
+    body: >-
+      After logging in, OpenClaw may ask you to pair this browser. Follow the
+      on-screen prompt (it shows a short command to run). You can open a shell
+      from the Console tab here on this page.
+  - title: Add a channel (optional)
+    body: >-
+      Provide a Telegram or Discord bot token in the Variables tab to enable that
+      channel. WhatsApp and Slack are set up from inside OpenClaw. Full guide:
+      https://docs.suji.fr/marketplace/openclaw
 
 upgrade_policy: breaking-changes-flagged
 
