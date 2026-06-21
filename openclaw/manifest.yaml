@@ -4,11 +4,13 @@ name: OpenClaw
 description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack — bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-5
+version: 2026.6.6-6
 release_notes: >-
-  Repositioned in the catalogue as a self-hosted AI agent and added the new
-  Agents category. Configuration and behaviour are unchanged — same upstream
-  OpenClaw 2026.6.6 image as -4.
+  Install-form clarity fixes (same upstream OpenClaw 2026.6.6 image as -5). The
+  connection test now validates your chosen model directly, so OpenAI-compatible
+  endpoints without a /models list work. The gateway secret is now labelled
+  "Gateway access token" and its help text points to where you copy it after
+  setup (Variables tab) — it is the token the gateway login screen asks for.
 categories: [agents, communication, automation]
 license: MIT
 
@@ -73,6 +75,9 @@ form_schema:
       kind: ai_provider
       provider_key: AI_PROVIDER
       base_url_key: AI_BASE_URL
+      # Send the typed model to the test so it validates THAT model first and
+      # can verify OpenAI-compatible endpoints that don't expose a /models list.
+      model_key: AI_MODEL
 
   - key: AI_MODEL
     type: text
@@ -92,8 +97,11 @@ form_schema:
 
   - key: OPENCLAW_GATEWAY_PASSWORD
     type: secret
-    label: Gateway password
-    description: Auto-generated if blank — used to authenticate the bot's webhook callbacks.
+    label: Gateway access token
+    description: >-
+      The token that unlocks the OpenClaw gateway UI — its login screen asks for
+      exactly this. Leave blank and one is generated for you; you can reveal and
+      copy it any time from this install's Variables tab after setup.
     auto_generate: true
 
   # Channels are enabled by presence: provide a bot token and OpenClaw's
