@@ -1,17 +1,15 @@
 slug: openclaw
 
 name: OpenClaw
-description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack — bring your own model keys, with memory and tools built in. Runs entirely on your instance.
+description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack. Bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-6
+version: 2026.6.6-7
 release_notes: >-
-  Install-form and first-run clarity (same upstream OpenClaw 2026.6.6 image as
-  -5). The connection test now validates your chosen model directly, so
-  OpenAI-compatible endpoints without a /models list work. The gateway secret is
-  now labelled "Gateway access token" (it is the token the gateway login screen
-  asks for), and a new Getting started guide on the install's Deployment tab
-  reveals that token and walks you through first login.
+  Copy fix (same upstream OpenClaw 2026.6.6 image as -6): removed an em dash from
+  the Gateway access token help text. Connection-test model validation, the
+  relabelled gateway secret, and the Deployment-tab Getting started guide from -6
+  are unchanged.
 categories: [agents, communication, automation]
 license: MIT
 
@@ -124,9 +122,9 @@ form_schema:
     type: secret
     label: Gateway access token
     description: >-
-      The token that unlocks the OpenClaw gateway UI — its login screen asks for
-      exactly this. Leave blank and one is generated for you; you can reveal and
-      copy it any time from this install's Variables tab after setup.
+      The token that unlocks the OpenClaw gateway UI; its login screen asks for
+      exactly this. Leave blank and one is generated for you, and you can reveal
+      and copy it any time from this install's Variables tab after setup.
     auto_generate: true
 
   # Channels are enabled by presence: provide a bot token and OpenClaw's
