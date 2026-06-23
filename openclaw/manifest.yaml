@@ -4,10 +4,11 @@ name: OpenClaw
 description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack. Bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-9
+version: 2026.6.6-10
 release_notes: >-
-  Copy fix (same upstream OpenClaw 2026.6.6 image as -8): trimmed the Model help
-  text to just what to enter. Behaviour is unchanged from -6/-7/-8.
+  Same upstream OpenClaw 2026.6.6 image as -9. The install form now offers a
+  "Skip & configure later" option: install without picking a provider/model and
+  set it up in the OpenClaw Control UI afterwards (OpenClaw boots unconfigured).
 categories: [agents, communication, automation]
 license: MIT
 
@@ -30,6 +31,11 @@ network:
 # this service. OpenClaw's compose has 3 services (init-perms, init-config,
 # openclaw); only the long-running gateway should receive user vars.
 primary_service: openclaw
+
+# OpenClaw boots with `--allow-unconfigured`, so the install form's AI fields are
+# advisory: users can "Skip & configure later" and set the provider/model in the
+# Control UI afterwards.
+allow_skip_config: true
 
 # Post-install "Getting started" steps, shown on the install's Deployment tab.
 # reveal_key surfaces the gateway token right where the user needs it, so they
