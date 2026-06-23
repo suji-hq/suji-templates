@@ -4,11 +4,10 @@ name: OpenClaw
 description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack. Bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-8
+version: 2026.6.6-9
 release_notes: >-
-  Copy fix (same upstream OpenClaw 2026.6.6 image as -7): the Model help text now
-  says the Test connection button is "below" it, matching the form (the button
-  moved beneath the model field). Behaviour is unchanged from -6/-7.
+  Copy fix (same upstream OpenClaw 2026.6.6 image as -8): trimmed the Model help
+  text to just what to enter. Behaviour is unchanged from -6/-7/-8.
 categories: [agents, communication, automation]
 license: MIT
 
@@ -107,9 +106,7 @@ form_schema:
     description: >-
       The model OpenClaw replies with, e.g. gpt-5.5, claude-sonnet-4-6, or
       gemini-3.1-pro-preview. Run "Test connection" below to list the provider's
-      models, or type any value. Leave blank to use a sensible default for the
-      chosen provider. Required for OpenAI-compatible, OpenRouter, and Moonshot
-      (no default is possible). You can change it later in the Control UI.
+      models, or type any value.
     default: ""
     required_if: { key: AI_PROVIDER, in: [openai-compatible, openrouter, moonshot] }
     # Populate suggestions from the AI_API_KEY connection test's model list.
