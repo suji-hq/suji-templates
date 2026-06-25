@@ -4,11 +4,10 @@ name: OpenClaw
 description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack. Bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-10
+version: 2026.6.6-11
 release_notes: >-
-  Same upstream OpenClaw 2026.6.6 image as -9. The install form now offers a
-  "Skip & configure later" option: install without picking a provider/model and
-  set it up in the OpenClaw Control UI afterwards (OpenClaw boots unconfigured).
+  Same upstream OpenClaw 2026.6.6 image as -10. Guide copy fix: the gateway step
+  now says "Copy" the access token (it is shown by default), not "Reveal" it.
 categories: [agents, communication, automation]
 license: MIT
 
@@ -47,7 +46,7 @@ guide:
       gateway access token.
   - title: Unlock the gateway
     body: >-
-      Reveal your access token below and paste it into the OpenClaw login screen.
+      Copy your access token below and paste it into the OpenClaw login screen.
       It is the same value any time you need it again.
     reveal_key: OPENCLAW_GATEWAY_PASSWORD
   - title: Pair this browser
