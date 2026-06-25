@@ -4,10 +4,11 @@ name: OpenClaw
 description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack. Bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-11
+version: 2026.6.6-12
 release_notes: >-
-  Same upstream OpenClaw 2026.6.6 image as -10. Guide copy fix: the gateway step
-  now says "Copy" the access token (it is shown by default), not "Reveal" it.
+  Same upstream OpenClaw 2026.6.6 image as -11. Guide copy fix: the pairing step
+  now describes the real flow (first sign-in prompts a device-approval command
+  to run in the Console, then sign in again).
 categories: [agents, communication, automation]
 license: MIT
 
@@ -49,11 +50,12 @@ guide:
       Copy your access token below and paste it into the OpenClaw login screen.
       It is the same value any time you need it again.
     reveal_key: OPENCLAW_GATEWAY_PASSWORD
-  - title: Pair this browser
+  - title: Approve this browser
     body: >-
-      After logging in, OpenClaw may ask you to pair this browser. Follow the
-      on-screen prompt (it shows a short command to run). You can open a shell
-      from the Console tab here on this page.
+      The first time you sign in with your access token, OpenClaw asks you to
+      approve this browser. It shows a command to run, like "openclaw devices
+      approve <id>". Open the Console tab here, run that command, then sign in
+      again.
   - title: Add a channel (optional)
     body: >-
       Provide a Telegram or Discord bot token in the Variables tab to enable that
