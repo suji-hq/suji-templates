@@ -4,11 +4,11 @@ name: OpenClaw
 description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack. Bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-12
+version: 2026.6.6-13
 release_notes: >-
-  Same upstream OpenClaw 2026.6.6 image as -11. Guide copy fix: the pairing step
-  now describes the real flow (first sign-in prompts a device-approval command
-  to run in the Console, then sign in again).
+  Same upstream OpenClaw 2026.6.6 image as -12. Fixes the approve-browser guide
+  step: the "[id]" placeholder was being stripped (it was angle-bracketed), so
+  the example command now reads in full.
 categories: [agents, communication, automation]
 license: MIT
 
@@ -54,7 +54,7 @@ guide:
     body: >-
       The first time you sign in with your access token, OpenClaw asks you to
       approve this browser. It shows a command to run, like "openclaw devices
-      approve <id>". Open the Console tab here, run that command, then sign in
+      approve [id]". Open the Console tab here, run that command, then sign in
       again.
   - title: Add a channel (optional)
     body: >-
