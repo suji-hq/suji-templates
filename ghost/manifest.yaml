@@ -4,7 +4,7 @@ name: Ghost
 description: Modern publishing platform for blogs, newsletters, and membership sites.
 homepage_url: https://ghost.org
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/ghost/icon.svg
-version: 6.45.0
+version: 6.47.0
 release_notes: >-
   Update Ghost to 6.45.0 (major, from 5.99.0). Ghost 6 dropped the Alpine image
   variant, so the template now pins the standard image tag (this also aligns the
