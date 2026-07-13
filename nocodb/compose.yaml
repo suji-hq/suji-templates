@@ -1,6 +1,6 @@
 services:
   nocodb:
-    image: docker.io/nocodb/nocodb:2026.06.1
+    image: docker.io/nocodb/nocodb:2026.06.2
     restart: unless-stopped
     environment:
       NC_AUTH_JWT_SECRET: ${NC_AUTH_JWT_SECRET}
