@@ -1,6 +1,6 @@
 services:
   vaultwarden:
-    image: docker.io/vaultwarden/server:1.36.0
+    image: docker.io/vaultwarden/server:1.37.1
     restart: unless-stopped
     environment:
       # The full public URL is required for WebAuthn / two-step login,

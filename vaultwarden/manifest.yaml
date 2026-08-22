@@ -4,7 +4,7 @@ name: Vaultwarden
 description: Lightweight, self-hosted password manager — fully compatible with the official Bitwarden clients (browser, desktop, mobile, CLI).
 homepage_url: https://github.com/dani-garcia/vaultwarden
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/vaultwarden/icon.svg
-version: 1.36.0
+version: 1.37.1
 release_notes: >-
   Initial Vaultwarden template. Bitwarden-compatible vault server with the
   public URL auto-wired for WebAuthn/2FA and attachments, optional admin panel,
