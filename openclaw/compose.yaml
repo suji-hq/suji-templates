@@ -6,7 +6,7 @@ services:
   # (USER node, uid 1000) unable to write. chown'ing on every deploy is
   # cheap and idempotent, and silently no-ops when ownership is correct.
   init-perms:
-    image: docker.io/library/alpine:3.20.3
+    image: docker.io/library/alpine:3.24.1
     user: "0"
     command: chown -R 1000:1000 /home/node/.openclaw
     volumes:
