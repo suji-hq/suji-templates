@@ -4,12 +4,19 @@ name: Vaultwarden
 description: Lightweight, self-hosted password manager — fully compatible with the official Bitwarden clients (browser, desktop, mobile, CLI).
 homepage_url: https://github.com/dani-garcia/vaultwarden
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/vaultwarden/icon.svg
-version: 1.36.0
+version: 1.37.2
 release_notes: >-
-  Initial Vaultwarden template. Bitwarden-compatible vault server with the
-  public URL auto-wired for WebAuthn/2FA and attachments, optional admin panel,
-  and a sign-up toggle so you can lock the instance down after creating your
-  account.
+  Updates Vaultwarden to 1.37.2. This is a security update: 1.37.0 fixed eight
+  advisories, including cross-organization cipher access, cross-organization
+  secret sharing, an SSRF in the icon endpoint, and unauthenticated WebSocket
+  flooding. Upgrading is strongly recommended.
+
+  1.37.x is also required for Bitwarden clients from version 2026.8.0 onward,
+  so older server versions will start failing against up-to-date browser,
+  desktop and mobile apps.
+
+  No configuration changes are needed. Your vault data, attachments and keys
+  live on the install's volume and are untouched by the upgrade.
 categories: [security, productivity]
 license: AGPL-3.0
 
