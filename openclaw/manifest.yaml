@@ -4,7 +4,7 @@ name: OpenClaw
 description: Self-hosted AI agent for Telegram, Discord, WhatsApp, and Slack. Bring your own model keys, with memory and tools built in. Runs entirely on your instance.
 homepage_url: https://github.com/openclaw/openclaw
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/openclaw/icon.svg
-version: 2026.6.6-13
+version: 2026.6.6-14
 release_notes: >-
   Same upstream OpenClaw 2026.6.6 image as -12. Fixes the approve-browser guide
   step: the "[id]" placeholder was being stripped (it was angle-bracketed), so

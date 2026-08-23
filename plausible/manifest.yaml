@@ -4,7 +4,7 @@ name: Plausible Analytics
 description: Privacy-friendly, lightweight web analytics — GDPR-compliant Google Analytics alternative.
 homepage_url: https://plausible.io
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/plausible/icon.svg
-version: v3.2.1-1
+version: v3.2.1-2
 release_notes: >-
   Update Plausible to v3.2.1 (major, from v2.1.5). The bundled PostgreSQL +
   ClickHouse compose is unchanged; the app runs its v3 data migrations on first

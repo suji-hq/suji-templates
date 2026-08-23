@@ -16,7 +16,7 @@ services:
           cpus: "0.5"
 
   plausible_events_db:
-    image: docker.io/clickhouse/clickhouse-server:24.3-alpine
+    image: docker.io/clickhouse/clickhouse-server:24.12-alpine
     restart: unless-stopped
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
