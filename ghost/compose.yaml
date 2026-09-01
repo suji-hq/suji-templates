@@ -1,6 +1,6 @@
 services:
   ghost:
-    image: docker.io/ghost:6.59.0
+    image: docker.io/ghost:6.61.0
     restart: unless-stopped
     environment:
       url: ${SUJI_PUBLIC_URL}
