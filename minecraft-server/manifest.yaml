@@ -8,7 +8,7 @@ description: >-
   initial Crafty admin password is shown in this app's logs on first start.
 homepage_url: https://craftycontrol.com
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/minecraft-server/icon.svg
-version: 4.10.7
+version: 4.10.8
 release_notes: >-
   Update Crafty Controller to 4.10.7 (from 4.10.4) and align the template
   version to the Crafty image tag so future updates flow through the normal
