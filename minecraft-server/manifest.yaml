@@ -4,17 +4,21 @@ description: >-
   Self-hosted Minecraft Java server managed by the Crafty Controller web
   panel. Create and run servers, edit configs, schedule backups, and use the
   in-browser console. The first server (port 25565) is reachable by players at
-  your VM's public IP; the admin panel is at your suji.fr subdomain. Your
-  initial Crafty admin password is shown in this app's logs on first start.
+  your VM's public IP; the admin panel is at your suji.fr subdomain. Sign in as
+  "admin" with the password in app/config/default-creds.txt in this app's
+  storage, then change it and delete the file.
 homepage_url: https://craftycontrol.com
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/minecraft-server/icon.svg
-version: 4.10.7
+version: 4.10.8
 release_notes: >-
-  Update Crafty Controller to 4.10.7 (from 4.10.4) and align the template
-  version to the Crafty image tag so future updates flow through the normal
-  poll/auto-bump pipeline. No template changes — only the server bound to port
-  25565 is publicly reachable; additional Crafty-managed servers are admin-only.
-  Accept the Mojang EULA inside the Crafty panel when creating a server.
+  Update Crafty Controller to 4.10.8 (from 4.10.7). This release fixes
+  CVE-2026-13716, a critical path-traversal flaw in the upload handler that
+  let a signed-in user write files to arbitrary paths on the server. It also
+  fixes Bedrock updates, directory downloads in the file manager, and backup
+  exclusions, and adds a Run Now button for scheduled tasks. Separately, this
+  template's description now points to the right place for the initial admin
+  password: Crafty writes it to app/config/default-creds.txt and has never
+  printed it to the app logs. No port, storage, or install-form changes.
 categories: [gaming]
 license: GPL-3.0-only
 resources:
