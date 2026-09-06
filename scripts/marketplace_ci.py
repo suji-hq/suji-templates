@@ -815,6 +815,12 @@ LLM_SYSTEM = (
     "caps your confidence; on its own it does not justify a worse verdict.\n"
     "- The image contract diff (entrypoint, cmd, ports, volumes, user, workdir) is "
     "mechanically observed and is the most reliable input you get. Weigh it highest.\n"
+    "- A contract diff TOGETHER WITH expanded host-validation, origin-checking or "
+    "reverse-proxy-trust signals IS sufficient for BREAKING, even with no changelog. "
+    "Those are two independent observations landing on the request path we depend "
+    "on, which is different from counts alone; the ban above is on token counts as "
+    "the ONLY evidence. Do not soften such a case to NEEDS_REVIEW merely because no "
+    "changelog confirmed it.\n"
     "- A change that only affects features we do not enable is SAFE.\n\n"
 
     "CONFIDENCE - calibrate honestly; a human reads this to decide whether to dig in:\n"
@@ -824,7 +830,8 @@ LLM_SYSTEM = (
     "- low: you are reasoning from absence, from token counts, or from what projects "
     "of this kind usually do. Speculation is never high confidence.\n\n"
 
-    "Prefer NEEDS_REVIEW over BREAKING when you are inferring rather than reading. "
+    "Prefer NEEDS_REVIEW over BREAKING when you are inferring rather than reading, "
+    "unless the contract-diff-plus-signals rule above applies. "
     "BREAKING means you can point at the specific thing that breaks. State which "
     "evidence you relied on, and label a guess as a guess. Return strict JSON "
     "matching the schema; keep summary and risks concise."
