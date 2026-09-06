@@ -1,17 +1,20 @@
 slug: hermes
 
 name: Hermes Agent
-description: Nous Research's open-source autonomous AI agent — persistent memory, scheduled tasks, and self-written skills. Bring your own model key; runs entirely on your instance.
+description: Nous Research's open-source autonomous AI agent with persistent memory, scheduled tasks, and self-written skills. Bring your own model key; runs entirely on your instance.
 homepage_url: https://github.com/NousResearch/hermes-agent
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/hermes/icon.svg
-version: v2026.6.19-2
+version: v2026.7.20
 release_notes: >-
-  Raise the minimum VM to Medium (8 GB). Hermes bundles Chromium for browser
-  automation and runs with a 4 GB container limit, so a 4 GB VM has no headroom
-  for the OS and gets OOM-killed under load — Medium is the realistic floor.
-  Dashboard auth is a mandatory sign-in (username + password); the workspace can
-  approve shell commands, so it is never exposed without a login. Same upstream
-  image v2026.6.19 (v0.17.0) as -1.
+  Update Hermes Agent to v2026.7.20 (from v2026.6.19). This release
+  strengthens the dashboard login: earlier versions had an escape hatch that
+  could serve the dashboard with no login when it was bound to all
+  interfaces, and Hermes now refuses to start the dashboard at all unless a
+  login is configured. Sessions keep working across restarts as before.
+  One thing to know if you already saved a model provider key inside the
+  Hermes dashboard: from this version that saved key takes priority over the
+  one in this install form, so change it in the dashboard rather than here.
+  Nothing else changes, and your data, port, and settings are untouched.
 categories: [agents, automation]
 license: Apache-2.0
 
@@ -92,8 +95,8 @@ form_schema:
     label: Dashboard username
     description: >-
       Username for the dashboard login. The workspace can approve shell
-      commands, so it is always protected by HTTP Basic Auth — it is never
-      exposed without a login.
+      commands, so the dashboard always sits behind this login and is never
+      reachable without it.
     required: true
     default: admin
 
@@ -106,5 +109,5 @@ form_schema:
   - key: DASHBOARD_SECRET
     type: secret
     label: Session signing secret
-    description: Auto-generated if blank — keeps you logged in across restarts.
+    description: Auto-generated if blank. Keeps you logged in across restarts.
     auto_generate: true
