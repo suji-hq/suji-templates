@@ -776,7 +776,9 @@ def extract_changelog(image: str, old_version: str | None,
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 # `or` not a .get() default: the workflows always define CI_LLM_MODEL, and an
 # unset repo variable arrives as "" rather than absent.
-LLM_MODEL = os.environ.get("CI_LLM_MODEL") or "deepseek/deepseek-v4-flash"
+# Pinned to a dated snapshot on purpose: the undated `deepseek-v4-flash` alias
+# floats, so verdicts would drift under us without a commit. Bump deliberately.
+LLM_MODEL = os.environ.get("CI_LLM_MODEL") or "deepseek/deepseek-v4-flash-0731"
 
 LLM_SYSTEM = (
     "You are a release-safety reviewer for the Suji app marketplace. Apps run as "
