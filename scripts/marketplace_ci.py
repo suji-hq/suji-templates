@@ -774,7 +774,11 @@ def extract_changelog(image: str, old_version: str | None,
 # Provider-agnostic via OpenRouter's OpenAI-compatible endpoint. Gated on
 # OPENROUTER_API_KEY; skips gracefully (deterministic checks still run) when unset.
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-LLM_MODEL = os.environ.get("CI_LLM_MODEL", "deepseek/deepseek-v4-flash")
+# `or` not a .get() default: the workflows always define CI_LLM_MODEL, and an
+# unset repo variable arrives as "" rather than absent.
+# Pinned to a dated snapshot on purpose: the undated `deepseek-v4-flash` alias
+# floats, so verdicts would drift under us without a commit. Bump deliberately.
+LLM_MODEL = os.environ.get("CI_LLM_MODEL") or "deepseek/deepseek-v4-flash-0731"
 
 LLM_SYSTEM = (
     "You are a release-safety reviewer for the Suji app marketplace. Apps run as "
@@ -782,15 +786,48 @@ LLM_SYSTEM = (
     "is reachable only at its own https://<subdomain>.suji.fr, the tunnel forwards "
     "the original Host header, the published port is not exposed except through the "
     "tunnel, and the app is protected by its own auth (e.g. a gateway token). We are "
-    "bumping ONLY an app's pinned image tag — nothing else in our compose/manifest "
+    "bumping ONLY an app's pinned image tag - nothing else in our compose/manifest "
     "changes. Decide whether moving to the new tag is SAFE, NEEDS_REVIEW, or BREAKING "
-    "for this reverse-proxied, one-subdomain-per-install deployment. Weigh: "
-    "browser-origin / CORS / CSRF / trusted-host checks that could reject the "
-    "per-install subdomain (returns 200 to curl but breaks the real browser); changes "
-    "to the listening port or bind address; changes to the data directory or volume "
-    "layout (silent state loss); renamed or removed env vars our compose sets; newly "
-    "required configuration. A change that only affects features we don't use is SAFE. "
-    "Return strict JSON matching the schema; keep summary and risks concise."
+    "for this reverse-proxied, one-subdomain-per-install deployment.\n\n"
+
+    "WHAT TO WEIGH:\n"
+    "- browser-origin / CORS / CSRF / trusted-host checks that could reject the "
+    "per-install subdomain (returns 200 to curl but breaks the real browser);\n"
+    "- changes to the listening port or bind address;\n"
+    "- changes to the data directory or volume layout (silent state loss);\n"
+    "- renamed or removed env vars our compose sets, or newly required config;\n"
+    "- auth that newly depends on outbound email (one-time codes, device or login "
+    "verification). Our templates configure NO SMTP, so a mandatory emailed code "
+    "locks the owner out permanently. Treat that as BREAKING;\n"
+    "- automatic database migrations that cannot be reverted: the upgrade is then "
+    "one-way even though the image tag can be rolled back;\n"
+    "- changes to where credentials are read from or their precedence (a value "
+    "stored in the app newly overriding the env var our install form injects).\n"
+    "Say whether each risk hits existing installs, new installs, or both.\n\n"
+
+    "HOW TO WEIGH EVIDENCE - this matters more than the list above:\n"
+    "- The 'identifiers newly present or expanded' counts are grep hits over the "
+    "image filesystem. They tell you WHERE to look. They are NOT proof that a check "
+    "changed, was enabled, or would reject our subdomain. A token spreading to more "
+    "files is ordinary refactoring far more often than it is a new restriction. "
+    "Never return BREAKING on token counts alone.\n"
+    "- A missing or empty changelog is absence of evidence, not evidence of risk. It "
+    "caps your confidence; on its own it does not justify a worse verdict.\n"
+    "- The image contract diff (entrypoint, cmd, ports, volumes, user, workdir) is "
+    "mechanically observed and is the most reliable input you get. Weigh it highest.\n"
+    "- A change that only affects features we do not enable is SAFE.\n\n"
+
+    "CONFIDENCE - calibrate honestly; a human reads this to decide whether to dig in:\n"
+    "- high: a concrete changelog entry or contract diff states the change. Name or "
+    "quote that evidence in the summary.\n"
+    "- medium: the evidence is suggestive but you are inferring the consequence.\n"
+    "- low: you are reasoning from absence, from token counts, or from what projects "
+    "of this kind usually do. Speculation is never high confidence.\n\n"
+
+    "Prefer NEEDS_REVIEW over BREAKING when you are inferring rather than reading. "
+    "BREAKING means you can point at the specific thing that breaks. State which "
+    "evidence you relied on, and label a guess as a guess. Return strict JSON "
+    "matching the schema; keep summary and risks concise."
 )
 
 VERDICT_SCHEMA = {

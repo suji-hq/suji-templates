@@ -113,7 +113,8 @@ between the two versions.
 An optional **LLM pass** then judges that diff + changelog against our deployment
 shape (reverse-proxied, one subdomain per install, behind token auth) and returns
 a `safe` / `needs_review` / `breaking` verdict with reasons. It runs via OpenRouter
-(`deepseek/deepseek-v4-flash` by default; override with `CI_LLM_MODEL`) using a
+(`deepseek/deepseek-v4-flash-0731` by default, a dated snapshot so verdicts do
+not drift; override with a `CI_LLM_MODEL` repo variable) using a
 plain HTTPS call — no SDK, still pure stdlib. Add an **`OPENROUTER_API_KEY`** repo
 secret to enable it; without the secret the LLM pass is skipped and the code-signal
 diff alone gates as `NEEDS_REVIEW`. When the LLM judges a flagged change `safe` in

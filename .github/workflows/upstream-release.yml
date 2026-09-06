@@ -107,6 +107,9 @@ jobs:
           # Optional: activates the OpenRouter LLM breaking-change pass. The
           # analyzer skips it gracefully when the secret is unset.
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # Model for that pass. Set the CI_LLM_MODEL repo variable to override
+          # the default; empty (variable unset) falls back in the analyzer.
+          CI_LLM_MODEL: ${{ vars.CI_LLM_MODEL }}
         run: |
           set -euo pipefail
           args=(analyze "$APP" --base HEAD)
