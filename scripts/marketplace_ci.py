@@ -532,6 +532,78 @@ def lint_template(manifest: dict, compose: dict, compose_text: str,
                            f"service {sname} image {img!r} registry not in "
                            f"allowlist {allow}")
 
+    lint_rendered_defaults(manifest, compose_text, report)
+
+
+def production_default_env(manifest: dict) -> dict:
+    """Substitution values a real install produces when the customer accepts
+    every default.
+
+    Deliberately different from ``render_for_boot``, which pads a dummy into
+    every field so length checks pass. Production leaves optional fields
+    BLANK, and blank is exactly what triggers the null-render bug class."""
+    env: dict = {}
+    for f in manifest.get("form_schema") or []:
+        if not isinstance(f, dict):
+            continue
+        k = f.get("key")
+        if not k:
+            continue
+        if f.get("auto_generate"):
+            env[k] = "00000000-0000-4000-8000-000000000000"
+        elif "default" in f and f["default"] is not None:
+            v = f["default"]
+            env[k] = ",".join(v) if isinstance(v, list) else str(v)
+        elif f.get("required"):
+            env[k] = "x" * 64
+        else:
+            env[k] = ""
+    if (manifest.get("exposure") or {}).get("exposable"):
+        host = f"{manifest.get('slug', 'app')}-citest.suji.fr"
+        env.setdefault("SUJI_PUBLIC_HOST", host)
+        env.setdefault("SUJI_PUBLIC_URL", f"https://{host}")
+        env.setdefault("SUJI_PUBLIC_PROTOCOL", "https")
+    return env
+
+
+def lint_rendered_defaults(manifest: dict, compose_text: str, report: Report):
+    """Render as a default install and reject what the platform would reject.
+
+    The boot test does NOT cover this. Docker reads a bare ``KEY:`` as
+    "inherit from the host environment" and starts happily, while the
+    platform's compose validator rejects null env values and fails the
+    install before any container exists. Wiki.js shipped uninstallable on its
+    default SQLite config for precisely this reason: four blank optional
+    fields rendered as null and every install died at validation."""
+    env = production_default_env(manifest)
+    rendered = re.sub(r"\$\{([A-Z_][A-Z0-9_]*)\}",
+                      lambda m: env.get(m.group(1), ""), compose_text)
+
+    leftover = sorted(set(re.findall(r"\$\{([A-Z_][A-Z0-9_]*)\}", rendered)))
+    if leftover:
+        report.add("error", "render.unresolved",
+                   "still unresolved after a default-config render: "
+                   + ", ".join(leftover))
+    try:
+        doc = yaml.safe_load(rendered) or {}
+    except Exception as e:
+        report.add("error", "render.yaml",
+                   f"a default-config render is not valid YAML: {e}")
+        return
+    for sname, svc in (doc.get("services") or {}).items():
+        if not isinstance(svc, dict):
+            continue
+        e = svc.get("environment")
+        if not isinstance(e, dict):
+            continue
+        for k, v in e.items():
+            if v is None:
+                report.add("error", "render.null_env",
+                           f"services.{sname}.environment.{k} renders as null on a "
+                           f"default install (bare `{k}:`). The platform's compose "
+                           f"validator rejects null env values, so the install fails "
+                           f'before any container starts. Quote it: {k}: "${{{k}}}"')
+
 
 def diff_form_contract(base_manifest: dict, head_manifest: dict, report: Report):
     """Catch the changes that break EXISTING installs (their stored config is

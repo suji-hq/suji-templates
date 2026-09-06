@@ -82,9 +82,15 @@ CI lives in `.github/workflows/` and is driven by `scripts/marketplace_ci.py`
   exposure contract** against the base branch (a renamed/removed form key or a
   moved `exposure.port` breaks existing installs → fails the check), diffs the
   **image contract** (user / workdir / entrypoint / exposed ports) against the
-  pinned image, and **boots the app** to confirm the exposed port serves. The
-  verdict (`SAFE` / `NEEDS_REVIEW` / `BREAKING`) is posted as a PR comment;
-  `BREAKING` fails the check.
+  pinned image, **renders the template as a default install** and rejects
+  anything the platform's compose validator would reject (an unresolved
+  `${VAR}`, or a blank substitution that renders as a bare `KEY:` and so
+  becomes YAML null), and **boots the app** to confirm the exposed port
+  serves. The default-render check is deliberately separate from the boot
+  test: docker reads a null env value as "inherit from the host environment"
+  and starts happily, while the platform rejects it and fails the install
+  before any container exists. The verdict (`SAFE` / `NEEDS_REVIEW` /
+  `BREAKING`) is posted as a PR comment; `BREAKING` fails the check.
 
 - **Upstream release analysis** answers "can we move to the new version without
   impact?" Trigger it three ways:
