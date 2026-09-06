@@ -295,12 +295,79 @@ def parse_stable(tag: str):
     return tuple(int(x) for x in (m.group(1), m.group(2), m.group(3), m.group(4) or 0))
 
 
-def latest_stable(tags: list[str]) -> str | None:
+def registry_digest(repo: str, tag: str) -> str | None:
+    """Resolve repo:tag to its manifest digest, or None if unavailable.
+
+    Used to pin a channel tag (``stable`` / ``latest``) to the concrete semver
+    tag it points at."""
+    accept = ", ".join([
+        "application/vnd.oci.image.index.v1+json",
+        "application/vnd.docker.distribution.manifest.list.v2+json",
+        "application/vnd.oci.image.manifest.v1+json",
+        "application/vnd.docker.distribution.manifest.v2+json",
+    ])
+    try:
+        if repo.startswith("ghcr.io/"):
+            name = repo[len("ghcr.io/"):]
+            tok = _http_json(
+                f"https://ghcr.io/token?scope=repository:{name}:pull&service=ghcr.io"
+            )["token"]
+            url = f"https://ghcr.io/v2/{name}/manifests/{tag}"
+        elif repo.startswith("docker.io/"):
+            name = repo[len("docker.io/"):]
+            if "/" not in name:
+                name = "library/" + name
+            tok = _http_json(
+                "https://auth.docker.io/token?service=registry.docker.io"
+                f"&scope=repository:{name}:pull"
+            )["token"]
+            url = f"https://registry-1.docker.io/v2/{name}/manifests/{tag}"
+        else:
+            return None
+        req = urllib.request.Request(
+            url, headers={"Authorization": f"Bearer {tok}", "Accept": accept},
+            method="HEAD")
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.headers.get("Docker-Content-Digest")
+    except Exception:
+        return None
+
+
+# Channel tags, most authoritative first. A repo that publishes one of these is
+# telling us which release it considers current; we trust that over "highest
+# semver", because some projects (n8n) ship prereleases under a plain semver tag
+# that no substring match can distinguish from a stable one.
+CHANNEL_TAGS = ("stable", "latest")
+
+# How many newest semver tags to probe for a channel-digest match before
+# giving up. A stable channel normally sits within the last few releases.
+MAX_CHANNEL_PROBES = 25
+
+
+def latest_stable(tags: list[str], repo: str | None = None) -> str | None:
     ranked = [(parse_stable(t), t) for t in tags]
     ranked = [(k, t) for k, t in ranked if k is not None]
     if not ranked:
         return None
     ranked.sort(key=lambda kt: kt[0])
+
+    # Prefer the semver tag that the repo's own channel tag points at. This is
+    # what keeps us off prerelease lines: n8n publishes betas as bare semver
+    # (e.g. 2.38.3 > 2.37.10) but never moves `stable`/`latest` onto them.
+    if repo:
+        for channel in CHANNEL_TAGS:
+            if channel not in tags:
+                continue
+            want = registry_digest(repo, channel)
+            if not want:
+                continue
+            # Walk newest-first and stop at the first digest match, so a repo
+            # with hundreds of tags costs a handful of requests, not hundreds.
+            for _, t in reversed(ranked[-MAX_CHANNEL_PROBES:]):
+                if registry_digest(repo, t) == want:
+                    return t
+            # Channel resolved but matched nothing we probed: fall through to
+            # the next channel rather than silently taking the newest tag.
     return ranked[-1][1]
 
 
@@ -891,7 +958,7 @@ def cmd_poll(args):
             manifest, compose, _ = load_template(app)
             _, svc = primary_service(manifest, compose)
             repo, tag = image_ref_parts(str((svc or {}).get("image", "")))
-            latest = latest_stable(registry_tags(repo))
+            latest = latest_stable(registry_tags(repo), repo)
             if latest and tag and parse_stable(latest) and (
                 not parse_stable(tag) or parse_stable(latest) > parse_stable(tag)
             ):
@@ -949,7 +1016,7 @@ def cmd_analyze(args):
         base_compose = load_yaml(ctext) or {}
         _, svc = primary_service(base_manifest, base_compose)
         repo, cur_tag = image_ref_parts(str((svc or {}).get("image", "")))
-        candidate = args.version or latest_stable(registry_tags(repo))
+        candidate = args.version or latest_stable(registry_tags(repo), repo)
         report = Report(app=app, current_version=cur_tag, candidate_version=candidate)
         old_image_tag = cur_tag  # base compose tag = the real old image tag
         if not candidate:
@@ -1025,6 +1092,29 @@ def _finish(report: Report):
     emit_outputs(report, md)
 
 
+def rewrite_release_notes(mtext: str, name: str, old_tag: str | None,
+                         new_tag: str) -> str:
+    """Replace release_notes with an accurate note for this bump.
+
+    The notes are customer-facing: they are what the upgrade dialog shows. An
+    auto-bump that changes only the image tag used to leave the previous
+    release's text in place, so the catalog served notes describing a version
+    the customer was not getting."""
+    frm = f" (from {old_tag})" if old_tag else ""
+    note = (
+        f"release_notes: >-\n"
+        f"  Update {name} to {new_tag}{frm}. Only the pinned image version\n"
+        f"  changed: the install form, exposed port, and storage are the same,\n"
+        f"  so existing installs keep their settings and data. See the upstream\n"
+        f"  release notes for what changed inside the app.\n"
+    )
+    if re.search(r"^release_notes: >-\n(?:  .*\n)+", mtext, flags=re.M):
+        return re.sub(r"^release_notes: >-\n(?:  .*\n)+", note, mtext,
+                      count=1, flags=re.M)
+    # No block to replace: insert right after the version line.
+    return re.sub(r"^(version:\s*.*\n)", r"\1" + note, mtext, count=1, flags=re.M)
+
+
 def cmd_bump(args):
     """Rewrite an app's compose image tags + manifest.version to a new version.
     Used by the auto-bump PR job after a SAFE verdict."""
@@ -1039,6 +1129,8 @@ def cmd_bump(args):
     (d / "compose.yaml").write_text(new_compose)
     mtext = (d / "manifest.yaml").read_text()
     mtext = re.sub(r"^version:\s*.*$", f"version: {new}", mtext, count=1, flags=re.M)
+    mtext = rewrite_release_notes(mtext, str(manifest.get("name") or app),
+                                  old_tag, new)
     (d / "manifest.yaml").write_text(mtext)
     print(f"bumped {app}: {old_tag} -> {new}")
     return 0
