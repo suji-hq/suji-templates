@@ -179,3 +179,12 @@ superseded auto-bump PRs in bulk once the replacements land.
 
 Catalog sync is `onConflictDoNothing` on `(slug, version)`. Editing a template
 without bumping `manifest.version` does nothing in production.
+
+## Sync verification, 2026-09-06
+
+After merging, prod catalog picked up ghost 6.62.0 and minecraft-server 4.10.8
+(2 new, 2 pruned at 00:07:52) but **not** n8n 2.37.10, which stayed on 2.35.7-1
+despite `main` carrying the new pin. The webhook fired and returned 200 each
+time, and the run logged `0 skipped`, so the template parsed cleanly; the sync
+simply saw stale repo content for that app. If this recurs, check
+`app_template_versions` after a bump rather than trusting the webhook's 200.
