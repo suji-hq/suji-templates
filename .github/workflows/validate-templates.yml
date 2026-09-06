@@ -75,6 +75,9 @@ jobs:
           # Optional LLM breaking-change pass (skipped gracefully when unset; not
           # available on fork PRs, where secrets aren't exposed).
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # Model for that pass. Set the CI_LLM_MODEL repo variable to override
+          # the default; empty (variable unset) falls back in the analyzer.
+          CI_LLM_MODEL: ${{ vars.CI_LLM_MODEL }}
         run: |
           set -e
           rc=0
