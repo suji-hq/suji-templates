@@ -1,21 +1,25 @@
 slug: nocodb
 
 name: NocoDB
-description: Open-source Airtable alternative — turns any database into a smart spreadsheet UI.
+description: Open-source Airtable alternative that turns any database into a smart spreadsheet UI.
 homepage_url: https://nocodb.com
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/nocodb/icon.svg
-version: 2026.08.1
+version: 2026.08.2
 release_notes: >-
-  Update NocoDB to 2026.06.1 (from 0.252.0; the project moved to date-based
-  versioning). The public URL is now auto-wired via NC_PUBLIC_URL from the
-  install's assigned subdomain, so the newer origin/redirect handling accepts
-  the per-install address in the browser. upgrade_policy stays manual.
+  Update NocoDB to 2026.08.2 (from 2026.08.1) and correct this app's memory
+  sizing. Upstream adds dual-axis charts, embedded linked records and
+  workflow folders, and fixes a permissions leak where field and table
+  permissions could escape their own base when a base was duplicated. The
+  sizing change matters if you are choosing an instance: NocoDB needs about
+  600 MB just to idle and cannot start at all in 512 MB, so the stated
+  minimum is now 1 GB and the recommendation 2 GB. Your data, login, and
+  settings are unchanged.
 categories: [database, productivity]
 license: AGPL-3.0
 
 resources:
-  min_memory_mib: 512
-  recommended_memory_mib: 1024
+  min_memory_mib: 1024
+  recommended_memory_mib: 2048
   min_cpu_millicores: 250
   recommended_storage_gib: 5
 
