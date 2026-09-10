@@ -4,14 +4,12 @@ name: n8n
 description: Workflow automation platform with hundreds of integrations (Zapier alternative).
 homepage_url: https://n8n.io
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/n8n/icon.svg
-version: 2.37.10
+version: 2.38.6
 release_notes: >-
-  Update n8n to 2.37.10 (from 2.35.7), the current upstream stable release.
-  No template changes: the install form, timezone auto-fill, and owner-setup
-  flow are unchanged, and the editor still runs on the same port and data
-  volume. Note that n8n applies its own database migrations on first start
-  and some of them cannot be undone, so this upgrade is one-way. Take a
-  snapshot of the instance before upgrading if you want a way back.
+  Update n8n to 2.38.6 (from 2.37.10). Only the pinned image version
+  changed: the install form, exposed port, and storage are the same,
+  so existing installs keep their settings and data. See the upstream
+  release notes for what changed inside the app.
 categories: [automation, productivity]
 license: Apache-2.0
 
