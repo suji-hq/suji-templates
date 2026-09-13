@@ -4,18 +4,12 @@ name: Ghost
 description: Modern publishing platform for blogs, newsletters, and membership sites.
 homepage_url: https://ghost.org
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/ghost/icon.svg
-version: 6.62.0
+version: 6.63.0
 release_notes: >-
-  Update Ghost to 6.62.0 (from 6.59.0) and fix owner sign-in. This release
-  closes five upstream security advisories that affect 6.59.0, including a
-  critical one that let a suspended staff account reactivate itself through
-  the password-reset flow, and a high-severity unauthenticated checkout issue.
-  Separately, staff device verification is now turned off: Ghost emails a
-  one-time code on every login after the first, and because this template
-  configures no mail server that code could never arrive, which locked owners
-  out of Ghost Admin on their second sign-in. Email and password login now
-  works normally. No install-form, port, or volume changes; Ghost runs its own
-  database migrations on first boot.
+  Update Ghost to 6.63.0 (from 6.62.0). Only the pinned image version
+  changed: the install form, exposed port, and storage are the same,
+  so existing installs keep their settings and data. See the upstream
+  release notes for what changed inside the app.
 categories: [cms, productivity]
 license: MIT
 
