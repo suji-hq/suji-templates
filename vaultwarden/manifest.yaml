@@ -5,18 +5,6 @@ description: Lightweight, self-hosted password manager — fully compatible with
 homepage_url: https://github.com/dani-garcia/vaultwarden
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/vaultwarden/icon.svg
 version: 1.37.4
-release_notes: >-
-  Update Vaultwarden to 1.37.4 (from 1.37.2). Only the pinned image version
-  changed: the install form, exposed port, and storage are the same,
-  so existing installs keep their settings and data. See the upstream
-  release notes for what changed inside the app.
-
-  1.37.x is also required for Bitwarden clients from version 2026.8.0 onward,
-  so older server versions will start failing against up-to-date browser,
-  desktop and mobile apps.
-
-  No configuration changes are needed. Your vault data, attachments and keys
-  live on the install's volume and are untouched by the upgrade.
 categories: [security, productivity]
 license: AGPL-3.0
 
