@@ -1,0 +1,222 @@
+services:
+  # Idempotent ownership fixup. Runs to completion before openclaw starts.
+  # Docker only inherits image-side directory ownership on the *first*
+  # mount of an empty named volume — so any later mount-path change, or
+  # a volume that was once mounted as root, leaves the openclaw process
+  # (USER node, uid 1000) unable to write. chown'ing on every deploy is
+  # cheap and idempotent, and silently no-ops when ownership is correct.
+  init-perms:
+    image: docker.io/library/alpine:3.24.1
+    user: "0"
+    command: chown -R 1000:1000 /home/node/.openclaw
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.1"
+
+  # Writes gateway config into the persisted openclaw.json — mirrors
+  # upstream's scripts/docker/setup.sh. Idempotent: re-runs set the same
+  # values. Three settings, all required for the tunnel to work:
+  #
+  #   gateway.mode=local / gateway.bind=lan
+  #     The runtime does NOT read OPENCLAW_GATEWAY_BIND from the environment
+  #     (that var only feeds upstream's setup script). Without bind=lan the
+  #     gateway binds loopback inside the container and the published port 502s.
+  #
+  #   gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback=true
+  #     Since upstream v2026.2.26 the Control UI websocket rejects any browser
+  #     whose Origin is not in gateway.controlUi.allowedOrigins (which auto-
+  #     seeds to localhost only). Customers reach OpenClaw at a per-install
+  #     https://<subdomain>.suji.fr that we cannot know at template time, so an
+  #     explicit allowlist is impossible. Host-header fallback accepts the
+  #     connection when the browser Origin matches the request Host — which the
+  #     Cloudflare tunnel sets to that same subdomain. This still rejects cross-
+  #     origin (CSRF) attempts (Origin host != Host), unlike allowedOrigins:["*"]
+  #     which would disable the check entirely. See upstream issue #29385.
+  init-config:
+    image: ghcr.io/suji-hq/marketplace-openclaw:2026.10.5-suji.1
+    user: "1000"
+    depends_on:
+      init-perms:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/sh", "-c"]
+    # Besides the gateway settings, select a DEFAULT MODEL that matches the
+    # chosen provider. OpenClaw's built-in default is an Anthropic model
+    # (agents.defaults.model.primary), so without this the agent stays pointed
+    # at Anthropic and every non-Anthropic provider boots with a key the active
+    # model can't use — the LLM silently never replies. `models set` writes the
+    # primary model into the persisted openclaw.json, which the gateway reads at
+    # startup. $$VAR escaping (see the openclaw service) keeps user values in the
+    # environment, never spliced into the script text — no injection surface.
+    command:
+      - |
+        # Seed-once guard. OpenClaw persists config in
+        # /home/node/.openclaw/openclaw.json. We only write a setting when its
+        # persisted value differs from the target, so a re-deploy (or an
+        # upgrade that resolves the SAME values) writes nothing — `models set`
+        # is what archives the active session to *.jsonl.reset.<ts>, the cause
+        # of the "lost memory" reset. Read-only checks parse the same JSON5 format;
+        # an unset key prints empty, so a first install still seeds everything.
+        set -e
+        # The running gateway owns its config lock in another PID namespace.
+        # Read-only seed checks must not acquire that lock. Writes still use
+        # the upstream CLI and fail if the gateway must first be stopped.
+        read_config() {
+          node -e '
+            const fs = require("node:fs");
+            const file = process.env.HOME + "/.openclaw/openclaw.json";
+            if (!fs.existsSync(file)) process.exit(0);
+            const config = require("json5").parse(fs.readFileSync(file, "utf8"));
+            const check = value => {
+              if (value && typeof value === "object") {
+                if (Object.hasOwn(value, "$$include")) throw Error("Resolve included config inside the gateway before reinitializing");
+                Object.values(value).forEach(check);
+              }
+            };
+            check(config);
+            let value = config;
+            for (const key of process.argv[1].split(".")) value = value?.[key];
+            if (value !== undefined) process.stdout.write(typeof value === "string" ? value : JSON.stringify(value));
+          ' "$$1"
+        }
+        set_if_changed() {
+          # $1 = config key, $2 = desired value
+          cur="$$(read_config "$$1")"
+          if [ "$$cur" != "$$2" ]; then
+            node dist/index.js config set "$$1" "$$2"
+          fi
+        }
+        set_if_changed gateway.mode local
+        set_if_changed gateway.bind lan
+        set_if_changed gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true
+        prov="$$AI_PROVIDER"
+        model="$$AI_MODEL"
+        full=""
+        if [ -n "$$model" ]; then
+          # Prefix the chosen provider UNLESS the user already did. Model NAMES
+          # legitimately contain slashes (OpenRouter ids like nvidia/nemotron-…,
+          # Groq's meta-llama/…), so "has a slash" does NOT mean "already
+          # provider-qualified" — without this the leading path segment (e.g.
+          # "nvidia") is read as the provider and OpenClaw rejects it as unknown.
+          # openai-compatible routes through the openai provider (OPENAI_BASE_URL).
+          case "$$prov" in openai-compatible) pkey=openai;; *) pkey="$$prov";; esac
+          case "$$model" in
+            "$$pkey"/*) full="$$model";;
+            *)          full="$$pkey/$$model";;
+          esac
+        else
+          # Blank: a current default per provider, with model ids valid in the
+          # pinned image's catalog. The built-in default is openai/gpt-5.5, so
+          # EVERY other provider (anthropic included) needs an explicit match.
+          # openrouter / moonshot / openai-compatible have no safe default — the
+          # form requires a model for those.
+          case "$$prov" in
+            anthropic) full="anthropic/claude-sonnet-4-6";;
+            openai) full="openai/gpt-5.5";;
+            google) full="google/gemini-3.1-pro-preview";;
+            mistral) full="mistral/mistral-large-latest";;
+            groq) full="groq/llama-3.3-70b-versatile";;
+            xai) full="xai/grok-4.3";;
+          esac
+        fi
+        # Only run `models set` when the persisted primary model differs from the
+        # resolved target. The pinned image's CLI has no `models get`, so we read
+        # the persisted primary directly (the same key `models set` writes). An empty/unset value (fresh install)
+        # always differs, so the first install still seeds.
+        if [ -n "$$full" ]; then
+          curmodel="$$(read_config agents.defaults.model.primary)"
+          if [ "$$curmodel" != "$$full" ]; then
+            node dist/index.js models set "$$full"
+          fi
+        fi
+        exit 0
+    environment:
+      HOME: "/home/node"
+      AI_PROVIDER: "${AI_PROVIDER}"
+      AI_MODEL: "${AI_MODEL}"
+    volumes:
+      - openclaw-data:/home/node/.openclaw
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+
+  openclaw:
+    image: ghcr.io/suji-hq/marketplace-openclaw:2026.10.5-suji.1
+    restart: unless-stopped
+    depends_on:
+      init-config:
+        condition: service_completed_successfully
+    # The gateway has no notion of the form's generic AI_PROVIDER/AI_API_KEY
+    # pair — it discovers credentials from per-provider env vars
+    # (ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, …) and honors
+    # OPENAI_BASE_URL for OpenAI-compatible endpoints. This wrapper maps the
+    # form contract onto those env names, then execs the stock gateway
+    # command (docker-entrypoint.sh just wraps `node`).
+    #
+    # `$$VAR` (double dollar, no braces) is deliberate, twice over: Suji's
+    # substitution only touches braced uppercase tokens, so these survive the
+    # platform render; docker compose's own interpolation collapses `$$` to `$`,
+    # so the shell reads the values from the container environment at
+    # runtime. User values are never spliced into the script text — no
+    # quoting/injection surface.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -n "$$AI_API_KEY" ]; then
+          case "$$AI_PROVIDER" in
+            anthropic) export ANTHROPIC_API_KEY="$$AI_API_KEY";;
+            openai|openai-compatible) export OPENAI_API_KEY="$$AI_API_KEY";;
+            google) export GEMINI_API_KEY="$$AI_API_KEY";;
+            mistral) export MISTRAL_API_KEY="$$AI_API_KEY";;
+            groq) export GROQ_API_KEY="$$AI_API_KEY";;
+            openrouter) export OPENROUTER_API_KEY="$$AI_API_KEY";;
+            xai) export XAI_API_KEY="$$AI_API_KEY";;
+            moonshot) export MOONSHOT_API_KEY="$$AI_API_KEY";;
+          esac
+        fi
+        if [ "$$AI_PROVIDER" = "openai-compatible" ] && [ -n "$$AI_BASE_URL" ]; then
+          export OPENAI_BASE_URL="$$AI_BASE_URL"
+        fi
+        exec node openclaw.mjs gateway --allow-unconfigured
+    environment:
+      # All env values are double-quoted so unselected-channel tokens render
+      # as the YAML string "" (instead of bare empty, which YAML parses as null).
+      #
+      # Token auth is REQUIRED once the gateway binds beyond loopback
+      # (init-config sets gateway.bind=lan). The form's auto-generated
+      # OPENCLAW_GATEWAY_PASSWORD secret feeds the token env the app
+      # actually reads; users unlock the gateway UI with it.
+      OPENCLAW_GATEWAY_TOKEN: "${OPENCLAW_GATEWAY_PASSWORD}"
+      AI_PROVIDER: "${AI_PROVIDER}"
+      AI_API_KEY: "${AI_API_KEY}"
+      AI_BASE_URL: "${AI_BASE_URL}"
+      # Channel tokens are read straight from the environment by the gateway,
+      # which auto-enables the channel at startup when its token is present (no
+      # `channels add` / config write needed). Blank = that channel is skipped.
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
+      DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN}"
+    ports:
+      - "18789"
+    volumes:
+      # OpenClaw persists state (sqlite + session + config) at
+      # /home/node/.openclaw — see upstream Dockerfile, which pre-creates
+      # this dir with node:node 0700 so first-run named volumes inherit
+      # correct ownership. Mounting elsewhere (e.g. /data) silently loses
+      # state across container recreates.
+      - openclaw-data:/home/node/.openclaw
+    networks: [suji-net]
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+          cpus: "1.0"
+volumes:
+  openclaw-data:
+networks:
+  suji-net:
+    external: true
