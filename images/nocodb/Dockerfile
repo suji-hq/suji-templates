@@ -22,6 +22,8 @@ COPY --from=packages /undici6/ /usr/src/app/node_modules/@ai-sdk/openai/node_mod
 COPY --from=packages /undici6/ /usr/src/app/node_modules/ai/node_modules/undici/
 COPY --from=packages /undici7/ /usr/src/app/node_modules/undici/
 COPY --from=packages /undici8/ /usr/src/app/node_modules/undici8/
+# Checked on every target architecture during the publication build.
+RUN ["node", "-e", "if(process.version!=='v24.22.1'||process.versions.modules!=='137')throw Error('unexpected runtime ABI');require('sqlite3');require('sharp');"]
 LABEL org.opencontainers.image.source="https://github.com/suji-hq/suji-templates" \
       org.opencontainers.image.version="2026.09.1-suji.1" \
       org.opencontainers.image.description="NocoDB 2026.09.1 with Node 24.22.1 and same-major Undici security updates"
