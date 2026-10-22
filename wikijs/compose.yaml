@@ -1,6 +1,6 @@
 services:
   wikijs:
-    image: docker.io/requarks/wiki:2.5.314
+    image: ghcr.io/suji-hq/marketplace-wikijs:2.5.316-suji.1
     restart: unless-stopped
     environment:
       DB_TYPE: "${DB_TYPE}"
