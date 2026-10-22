@@ -1,0 +1,25 @@
+name: Crafty functional smoke
+on:
+  pull_request:
+    paths: ['minecraft-server/**', 'scripts/smoke-crafty.py', '.github/workflows/crafty-smoke.yml']
+  push:
+    branches: [main]
+    paths: ['minecraft-server/**', 'scripts/smoke-crafty.py', '.github/workflows/crafty-smoke.yml']
+permissions:
+  contents: read
+jobs:
+  control-panel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Validate control panel auth, isolation and persistence
+        shell: python
+        run: |
+          import pathlib, re, subprocess
+          compose = pathlib.Path('minecraft-server/compose.yaml').read_text()
+          match = re.search(r'^    image: (docker.io/arcadiatechnology/crafty-4:[^\s]+)$', compose, re.M)
+          if not match: raise RuntimeError('Expected the pinned Crafty image')
+          subprocess.run(['python3', 'scripts/smoke-crafty.py', match.group(1)], check=True)
