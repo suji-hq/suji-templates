@@ -37,7 +37,7 @@ services:
   #     origin (CSRF) attempts (Origin host != Host), unlike allowedOrigins:["*"]
   #     which would disable the check entirely. See upstream issue #29385.
   init-config:
-    image: ghcr.io/openclaw/openclaw:2026.6.6
+    image: ghcr.io/suji-hq/marketplace-openclaw:2026.10.5-suji.1
     user: "1000"
     depends_on:
       init-perms:
@@ -58,11 +58,33 @@ services:
         # persisted value differs from the target, so a re-deploy (or an
         # upgrade that resolves the SAME values) writes nothing — `models set`
         # is what archives the active session to *.jsonl.reset.<ts>, the cause
-        # of the "lost memory" reset. Reads use the same CLI; an unset key
-        # prints empty, so the first install still seeds everything.
+        # of the "lost memory" reset. Read-only checks parse the same JSON5 format;
+        # an unset key prints empty, so a first install still seeds everything.
+        set -e
+        # The running gateway owns its config lock in another PID namespace.
+        # Read-only seed checks must not acquire that lock. Writes still use
+        # the upstream CLI and fail if the gateway must first be stopped.
+        read_config() {
+          node -e '
+            const fs = require("node:fs");
+            const file = process.env.HOME + "/.openclaw/openclaw.json";
+            if (!fs.existsSync(file)) process.exit(0);
+            const config = require("json5").parse(fs.readFileSync(file, "utf8"));
+            const check = value => {
+              if (value && typeof value === "object") {
+                if (Object.hasOwn(value, "$$include")) throw Error("Resolve included config inside the gateway before reinitializing");
+                Object.values(value).forEach(check);
+              }
+            };
+            check(config);
+            let value = config;
+            for (const key of process.argv[1].split(".")) value = value?.[key];
+            if (value !== undefined) process.stdout.write(typeof value === "string" ? value : JSON.stringify(value));
+          ' "$$1"
+        }
         set_if_changed() {
           # $1 = config key, $2 = desired value
-          cur="$$(node dist/index.js config get "$$1" 2>/dev/null || true)"
+          cur="$$(read_config "$$1")"
           if [ "$$cur" != "$$2" ]; then
             node dist/index.js config set "$$1" "$$2"
           fi
@@ -102,15 +124,13 @@ services:
         fi
         # Only run `models set` when the persisted primary model differs from the
         # resolved target. The pinned image's CLI has no `models get`, so we read
-        # the persisted primary directly via `config get agents.defaults.model.primary`
-        # (the same key `models set` writes). An empty/unset value (fresh install)
+        # the persisted primary directly (the same key `models set` writes). An empty/unset value (fresh install)
         # always differs, so the first install still seeds.
         if [ -n "$$full" ]; then
-          curmodel="$$(node dist/index.js config get agents.defaults.model.primary 2>/dev/null || true)"
-          case "$$curmodel" in
-            *"$$full"*) : ;;                        # already set — skip the reset-triggering write
-            *) node dist/index.js models set "$$full";;
-          esac
+          curmodel="$$(read_config agents.defaults.model.primary)"
+          if [ "$$curmodel" != "$$full" ]; then
+            node dist/index.js models set "$$full"
+          fi
         fi
         exit 0
     environment:
@@ -122,11 +142,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
           cpus: "0.5"
 
   openclaw:
-    image: ghcr.io/openclaw/openclaw:2026.6.6
+    image: ghcr.io/suji-hq/marketplace-openclaw:2026.10.5-suji.1
     restart: unless-stopped
     depends_on:
       init-config:
