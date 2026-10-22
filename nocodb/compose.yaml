@@ -1,6 +1,6 @@
 services:
   nocodb:
-    image: docker.io/nocodb/nocodb:2026.09.1
+    image: ghcr.io/suji-hq/marketplace-nocodb:2026.09.1-suji.1
     restart: unless-stopped
     environment:
       NC_AUTH_JWT_SECRET: ${NC_AUTH_JWT_SECRET}
