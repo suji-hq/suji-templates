@@ -4,12 +4,7 @@ name: n8n
 description: Workflow automation platform with hundreds of integrations (Zapier alternative).
 homepage_url: https://n8n.io
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/n8n/icon.svg
-version: 2.44.5
-release_notes: >-
-  Update n8n to 2.44.5 (from 2.37.10). Only the pinned image version
-  changed: the install form, exposed port, and storage are the same,
-  so existing installs keep their settings and data. See the upstream
-  release notes for what changed inside the app.
+version: 2.44.6
 categories: [automation, productivity]
 license: Apache-2.0
 
