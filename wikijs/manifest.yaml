@@ -4,12 +4,7 @@ name: Wiki.js
 description: Modern, lightweight, powerful wiki built on Node.js, Git, and Markdown.
 homepage_url: https://wiki.js.org
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/wikijs/icon.svg
-version: 2.5.316
-release_notes: >-
-  Update Wiki.js to 2.5.316 (from 2.5.314). Only the pinned image version
-  changed: the install form, exposed port, and storage are the same,
-  so existing installs keep their settings and data. See the upstream
-  release notes for what changed inside the app.
+version: 2.5.316-suji.1
 categories: [productivity, cms]
 license: AGPL-3.0
 
@@ -31,7 +26,7 @@ network:
 upgrade_policy: manual
 
 registry:
-  - docker.io
+  - ghcr.io
 
 form_schema:
   - key: DB_TYPE
