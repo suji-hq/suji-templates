@@ -371,6 +371,49 @@ def latest_stable(tags: list[str], repo: str | None = None) -> str | None:
     return ranked[-1][1]
 
 
+# Managed security images deliberately have their own release cycle. Poll the
+# vendor, but never turn a vendor tag into an unreviewed managed-image bump.
+MANAGED_UPSTREAMS = {
+    "ghost": {"registry": "docker.io/ghost"},
+    "n8n": {"registry": "docker.io/n8nio/n8n"},
+    "nocodb": {"registry": "docker.io/nocodb/nocodb"},
+    "wikijs": {"github": "requarks/wiki-v2", "keep_v": False},
+    "hermes": {"github": "NousResearch/hermes-agent", "keep_v": True},
+    "openclaw": {"github": "openclaw/openclaw", "keep_v": False},
+}
+MANAGED_PREFIX = "ghcr.io/suji-hq/marketplace-"
+
+
+def managed_upstream(app: str, repo: str) -> dict | None:
+    if not repo.startswith(MANAGED_PREFIX):
+        return None
+    if app not in MANAGED_UPSTREAMS or repo != MANAGED_PREFIX + app:
+        raise ValueError("managed image has no matching reviewed upstream mapping")
+    return MANAGED_UPSTREAMS[app]
+
+
+def managed_vendor_version(tag: str) -> str:
+    vendor = re.sub(r"-suji\.[0-9]+$", "", tag)
+    if vendor == tag or not parse_stable(vendor):
+        raise ValueError("managed image tag must include a stable vendor version and -suji.N")
+    return vendor
+
+
+def latest_managed_upstream(source: dict) -> str:
+    if "github" in source:
+        release = _http_json("https://api.github.com/repos/" + source["github"] + "/releases/latest",
+                             {"Accept": "application/vnd.github+json", "User-Agent": "suji-marketplace"})
+        tag = release.get("tag_name", "")
+        if release.get("draft") or release.get("prerelease") or not parse_stable(tag):
+            raise ValueError("upstream did not return a stable published release")
+        return tag if source.get("keep_v") else tag.removeprefix("v")
+    repo = source["registry"]
+    latest = latest_stable(registry_tags(repo), repo)
+    if not latest or not parse_stable(latest):
+        raise ValueError("could not resolve stable managed upstream version")
+    return latest
+
+
 # ── docker image contract ─────────────────────────────────────────────────────
 CONTRACT_FMT = (
     "{{json .Config.User}}|{{json .Config.WorkingDir}}|{{json .Config.Entrypoint}}"
@@ -1008,7 +1051,9 @@ def render_markdown(r: Report) -> str:
     v = r.verdict
     cur = r.current_version or "the current version"
     cand = r.candidate_version or "the new version"
-    out = [HEADLINE[v].format(app=r.app, cur=cur, cand=cand), "", SUMMARY[v], ""]
+    summary = ("This is an upstream release notice. The managed security image has not been rebuilt or tested for it."
+               if any(f.code == "managed.overlay" for f in r.findings) else SUMMARY[v])
+    out = [HEADLINE[v].format(app=r.app, cur=cur, cand=cand), "", summary, ""]
 
     if r.llm and r.llm.get("summary"):
         model = LLM_MODEL.split("/")[-1]
@@ -1069,20 +1114,25 @@ def cmd_poll(args):
     apps = args.apps or [p.name for p in REPO_ROOT.iterdir()
                          if (p / "manifest.yaml").exists()]
     behind = []
+    errors = []
     for app in sorted(apps):
         try:
             manifest, compose, _ = load_template(app)
             _, svc = primary_service(manifest, compose)
             repo, tag = image_ref_parts(str((svc or {}).get("image", "")))
-            latest = latest_stable(registry_tags(repo), repo)
-            if latest and tag and parse_stable(latest) and (
-                not parse_stable(tag) or parse_stable(latest) > parse_stable(tag)
+            source = managed_upstream(app, repo)
+            latest = latest_managed_upstream(source) if source else latest_stable(registry_tags(repo), repo)
+            current = managed_vendor_version(tag or "") if source else tag
+            if latest and current and parse_stable(latest) and (
+                not parse_stable(current) or parse_stable(latest) > parse_stable(current)
             ):
-                behind.append({"app": app, "current": tag, "candidate": latest})
+                behind.append({"app": app, "current": tag, "candidate": latest, "version": latest,
+                               "mode": "security-overlay" if source else "vendor-image"})
                 print(f"  {app}: {tag} → {latest} (behind)", file=sys.stderr)
             else:
                 print(f"  {app}: {tag} (up to date; latest={latest})", file=sys.stderr)
         except Exception as e:  # don't let one app break the poll
+            errors.append(app)
             print(f"  {app}: poll error: {e}", file=sys.stderr)
     matrix = {"include": behind}
     print(json.dumps(matrix))
@@ -1091,7 +1141,7 @@ def cmd_poll(args):
         with open(gho, "a") as fh:
             fh.write(f"matrix={json.dumps(matrix)}\n")
             fh.write(f"any={'true' if behind else 'false'}\n")
-    return 0
+    return 1 if errors else 0
 
 
 def cmd_analyze(args):
@@ -1132,6 +1182,19 @@ def cmd_analyze(args):
         base_compose = load_yaml(ctext) or {}
         _, svc = primary_service(base_manifest, base_compose)
         repo, cur_tag = image_ref_parts(str((svc or {}).get("image", "")))
+        source = managed_upstream(app, repo)
+        if source:
+            managed_vendor_version(cur_tag or "")
+            candidate = args.version or latest_managed_upstream(source)
+            if not parse_stable(candidate):
+                raise ValueError("managed upstream candidate must be a stable vendor version")
+            report = Report(app=app, current_version=cur_tag, candidate_version=candidate)
+            report.add("warn", "managed.overlay",
+                       "Rebuild and verify the managed security image for this upstream release, "
+                       "publish a new immutable -suji.N tag, then review its catalog change. "
+                       "Automatic image rewriting is disabled to preserve runtime security patches.")
+            _finish(report)
+            return 0
         candidate = args.version or latest_stable(registry_tags(repo), repo)
         report = Report(app=app, current_version=cur_tag, candidate_version=candidate)
         old_image_tag = cur_tag  # base compose tag = the real old image tag
@@ -1239,6 +1302,8 @@ def cmd_bump(args):
     manifest, compose, compose_text = load_template(app)
     _, svc = primary_service(manifest, compose)
     repo, old_tag = image_ref_parts(str((svc or {}).get("image", "")))
+    if managed_upstream(app, repo):
+        raise ValueError("managed security images require a reviewed image build and catalog PR")
     new = args.version
     # Bump every reference to the primary image repo (covers init + main services).
     new_compose = re.sub(re.escape(repo) + r":[^\s\"']+", f"{repo}:{new}", compose_text)
