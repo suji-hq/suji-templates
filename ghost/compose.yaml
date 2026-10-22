@@ -1,6 +1,6 @@
 services:
   ghost:
-    image: docker.io/ghost:6.72.0
+    image: ghcr.io/suji-hq/marketplace-ghost:6.72.0-suji.1
     restart: unless-stopped
     environment:
       url: ${SUJI_PUBLIC_URL}
