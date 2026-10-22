@@ -1,0 +1,46 @@
+{
+  "/usr/src/app/node_modules/@ai-sdk/amazon-bedrock/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/@ai-sdk/anthropic/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/@ai-sdk/azure/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/@ai-sdk/deepseek/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/@ai-sdk/gateway/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/@ai-sdk/google/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/@ai-sdk/groq/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/@ai-sdk/openai/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/ai/node_modules/undici": {
+    "from": "6.28.1",
+    "to": "6.29.1"
+  },
+  "/usr/src/app/node_modules/undici": {
+    "from": "7.29.1",
+    "to": "7.30.1"
+  },
+  "/usr/src/app/node_modules/undici8": {
+    "from": "8.10.2",
+    "to": "8.12.3"
+  }
+}
