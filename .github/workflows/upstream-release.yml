@@ -103,7 +103,7 @@ jobs:
         id: a
         env:
           APP: ${{ matrix.app }}
-          VERSION: ${{ matrix.version }}
+          VERSION: ${{ matrix.version || matrix.candidate }}
           # Optional: activates the OpenRouter LLM breaking-change pass. The
           # analyzer skips it gracefully when the secret is unset.
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

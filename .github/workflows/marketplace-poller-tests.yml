@@ -1,0 +1,17 @@
+name: Marketplace poller tests
+on:
+  pull_request:
+    paths: ['scripts/marketplace_ci.py', 'scripts/test_marketplace_ci.py', '.github/workflows/upstream-release.yml', '.github/workflows/marketplace-poller-tests.yml']
+  push:
+    branches: [main]
+    paths: ['scripts/marketplace_ci.py', 'scripts/test_marketplace_ci.py', '.github/workflows/upstream-release.yml', '.github/workflows/marketplace-poller-tests.yml']
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s scripts -p test_marketplace_ci.py -v
