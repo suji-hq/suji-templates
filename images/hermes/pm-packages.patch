@@ -1,0 +1,26 @@
+--- a/pm/packages.py
++++ b/pm/packages.py
+@@ -499,6 +499,11 @@
+     the Termux main-repo nodejs .deb for bionic (same major line, termux-built)."""
+ 
+     name = "node"
++
++    def stage(self, store: Store, staged: Path, version: str, target: str) -> None:
++        super().stage(store, staged, version, target)
++        from pm.suji_security import patch_bundled_undici
++        patch_bundled_undici(staged)
+     binary_rel = {"win32": "node.exe", "posix": "bin/node"}
+     # The staged .deb's main binary: DebPackage.verify checks it.
+     main_bin_rel = "bin/node"
+@@ -592,6 +597,11 @@
+ @register
+ class Npm(BinaryPackage):
+     name = "npm"
++
++    def stage(self, store: Store, staged: Path, version: str, target: str) -> None:
++        super().stage(store, staged, version, target)
++        from pm.suji_security import patch_bundled_undici
++        patch_bundled_undici(staged)
+     deps = ("node",)
+     binary_rel = {"win32": "npm.cmd", "posix": "bin/npm"}
+     flatten = False
