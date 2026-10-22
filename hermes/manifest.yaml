@@ -4,17 +4,7 @@ name: Hermes Agent
 description: Nous Research's open-source autonomous AI agent with persistent memory, scheduled tasks, and self-written skills. Bring your own model key; runs entirely on your instance.
 homepage_url: https://github.com/NousResearch/hermes-agent
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/hermes/icon.svg
-version: v2026.7.20
-release_notes: >-
-  Update Hermes Agent to v2026.7.20 (from v2026.6.19). This release
-  strengthens the dashboard login: earlier versions had an escape hatch that
-  could serve the dashboard with no login when it was bound to all
-  interfaces, and Hermes now refuses to start the dashboard at all unless a
-  login is configured. Sessions keep working across restarts as before.
-  One thing to know if you already saved a model provider key inside the
-  Hermes dashboard: from this version that saved key takes priority over the
-  one in this install form, so change it in the dashboard rather than here.
-  Nothing else changes, and your data, port, and settings are untouched.
+version: 0.22.4-suji.1
 categories: [agents, automation]
 license: Apache-2.0
 
@@ -40,7 +30,7 @@ primary_service: hermes
 upgrade_policy: breaking-changes-flagged
 
 registry:
-  - docker.io
+  - ghcr.io
 
 form_schema:
   - key: LLM_PROVIDER

@@ -1,6 +1,6 @@
 services:
   hermes:
-    image: docker.io/nousresearch/hermes-agent:v2026.7.20
+    image: ghcr.io/suji-hq/marketplace-hermes:0.22.4-suji.1
     restart: unless-stopped
     # The image's entrypoint is the hermes binary; `gateway run` starts the
     # long-running agent gateway + dashboard (matches upstream's documented
