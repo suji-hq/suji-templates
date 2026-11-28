@@ -9,7 +9,12 @@ description: >-
   storage, then change it and delete the file.
 homepage_url: https://craftycontrol.com
 icon_url: https://raw.githubusercontent.com/suji-hq/suji-templates/main/minecraft-server/icon.svg
-version: 4.11.0
+version: 4.11.1
+release_notes: >-
+  Update Minecraft Server to 4.11.1 (from 4.11.0). Only the pinned image version
+  changed: the install form, exposed port, and storage are the same,
+  so existing installs keep their settings and data. See the upstream
+  release notes for what changed inside the app.
 categories: [gaming]
 license: GPL-3.0-only
 resources:
